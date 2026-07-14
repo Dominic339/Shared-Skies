@@ -3,6 +3,20 @@ Evidence-gathering + AI-classification pass for unnamed imported
 landmarks. Never touches the live `landmarks` table -- writes a CSV of
 suggestions for human review, same spirit as review_export.py.
 
+Resumable by construction, not by a separate tracked state table: before
+gathering evidence, check whether a prior enrichment_runs row for this
+entity already has evidence -- reuse it instead of re-hitting Overpass/
+Wikidata/Wikipedia. Before classifying, check whether a prior row already
+has a successful response -- skip the AI call entirely and reuse it. This
+means quota exhaustion (Overpass rate limits, Gemini's daily free-tier
+cap) is a normal pause, not lost work: run the same command again later
+and only the genuinely unfinished records do anything.
+
+Every "needs evidence / has evidence, needs AI / AI complete, needs
+review / published" state is derived from enrichment_runs + landmarks at
+query time, not stored redundantly -- see metrics.py, which reports
+exactly this breakdown.
+
 For each unnamed record, gathers:
   - its own raw OSM tags (already imported, from landmark_sources)
   - a direct Wikidata/Wikipedia pull, if the object already carries those
@@ -10,7 +24,7 @@ For each unnamed record, gathers:
   - nearby named OSM objects within radius_m (context: "what park/street/
     building is this thing actually part of?")
 
-Then asks Gemini to classify the record as one of:
+Then asks the configured provider to classify the record as one of:
   - recovered_landmark  -- evidence clearly identifies a real destination
   - landmark_feature    -- belongs under a larger parent place
   - archive_ignore      -- valid OSM data, not meaningful Shared Skies content
@@ -139,30 +153,44 @@ def build_prompt(evidence: dict, radius_m: float) -> str:
     )
 
 
-def enrich_one(client, landmark: dict, source: dict, radius_m: float, provider: EnrichmentProvider) -> dict:
-    evidence = gather_evidence(landmark, source, radius_m)
-    prompt = build_prompt(evidence, radius_m)
-
-    start = time.monotonic()
-    try:
-        suggestion, resolved_model = provider.classify(prompt)
-    except Exception as e:
-        duration_ms = round((time.monotonic() - start) * 1000)
-        # Evidence gathering succeeded -- worth persisting even though the
-        # actual classification call failed, so a retry later doesn't need
-        # to re-run Overpass/Wikidata/Wikipedia for this record.
-        record_enrichment_run(
-            client, landmark["id"], provider.name, getattr(provider, "MODEL_ALIAS", provider.name),
-            prompt, evidence, response=None, confidence=None, error=str(e), duration_ms=duration_ms,
-        )
-        raise
-    duration_ms = round((time.monotonic() - start) * 1000)
-
-    record_enrichment_run(
-        client, landmark["id"], provider.name, resolved_model,
-        prompt, evidence, response=suggestion, confidence=suggestion.get("confidence"), duration_ms=duration_ms,
+def get_cached_evidence(client, entity_id: str) -> dict | None:
+    """Most recent evidence blob already stored for this entity, if any --
+    reused instead of re-hitting Overpass/Wikidata/Wikipedia. This is the
+    fix for today's actual waste: evidence gathering used to happen fresh
+    on every attempt, even for records that had already succeeded at this
+    exact step before and only failed later, at classification."""
+    rows = (
+        client.table("enrichment_runs")
+        .select("evidence")
+        .eq("entity_id", entity_id)
+        .not_.is_("evidence", "null")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
     )
+    return rows[0]["evidence"] if rows else None
 
+
+def get_successful_run(client, entity_id: str) -> dict | None:
+    """Most recent successful classification for this entity, if any --
+    skip the AI call entirely and reuse it rather than paying for (or
+    burning quota on) a repeat classification of something already
+    answered."""
+    rows = (
+        client.table("enrichment_runs")
+        .select("evidence,response")
+        .eq("entity_id", entity_id)
+        .not_.is_("response", "null")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+    return rows[0] if rows else None
+
+
+def to_csv_row(landmark: dict, source: dict, evidence: dict, suggestion: dict) -> dict:
     return {
         "code": landmark["code"],
         "external_ref": source.get("external_ref", ""),
@@ -182,6 +210,49 @@ def enrich_one(client, landmark: dict, source: dict, radius_m: float, provider: 
         "human_review_required": True,  # always -- this pass produces suggestions, not publications
         "reasoning": suggestion.get("reasoning", ""),
     }
+
+
+def enrich_one(client, landmark: dict, source: dict, radius_m: float, provider: EnrichmentProvider) -> tuple[dict, bool]:
+    """Returns (csv_row, made_network_call) -- callers use the second value
+    to skip pacing delays after a pure cache-hit, which made zero requests
+    and has nothing to be gentle about."""
+    already_done = get_successful_run(client, landmark["id"])
+    if already_done is not None:
+        return to_csv_row(landmark, source, already_done["evidence"], already_done["response"]), False
+
+    evidence = get_cached_evidence(client, landmark["id"])
+    if evidence is None:
+        evidence = gather_evidence(landmark, source, radius_m)
+        prompt = build_prompt(evidence, radius_m)
+        # Persist evidence immediately, independent of whether
+        # classification below succeeds -- if it doesn't, or the process
+        # dies, or quota runs out right after this, the evidence is
+        # already safe and a future run skips straight to classification.
+        record_enrichment_run(
+            client, landmark["id"], provider.name, "evidence_only",
+            prompt, evidence, response=None, confidence=None, error=None,
+        )
+    else:
+        prompt = build_prompt(evidence, radius_m)
+
+    start = time.monotonic()
+    try:
+        suggestion, resolved_model = provider.classify(prompt)
+    except Exception as e:
+        duration_ms = round((time.monotonic() - start) * 1000)
+        record_enrichment_run(
+            client, landmark["id"], provider.name, getattr(provider, "MODEL_ALIAS", provider.name),
+            prompt, evidence, response=None, confidence=None, error=str(e), duration_ms=duration_ms,
+        )
+        raise
+    duration_ms = round((time.monotonic() - start) * 1000)
+
+    record_enrichment_run(
+        client, landmark["id"], provider.name, resolved_model,
+        prompt, evidence, response=suggestion, confidence=suggestion.get("confidence"), duration_ms=duration_ms,
+    )
+
+    return to_csv_row(landmark, source, evidence, suggestion), True
 
 
 def run(community_id: str, out_path: str, limit: int | None, radius_m: float, provider: EnrichmentProvider | None = None) -> None:
@@ -218,18 +289,30 @@ def run(community_id: str, out_path: str, limit: int | None, radius_m: float, pr
         sources_by_landmark = {s["landmark_id"]: s for s in sources}
 
     rows = []
+    skipped_already_resolved = 0
     for i, landmark in enumerate(landmarks, start=1):
-        print(f"[{i}/{len(landmarks)}] {landmark['code']}...", file=sys.stderr)
         source = sources_by_landmark.get(landmark["id"], {})
         try:
-            rows.append(enrich_one(client, landmark, source, radius_m, provider))
+            row, made_network_call = enrich_one(client, landmark, source, radius_m, provider)
+            rows.append(row)
         except Exception as e:
-            print(f"  ERROR: {e}", file=sys.stderr)
+            print(f"[{i}/{len(landmarks)}] {landmark['code']}... ERROR: {e}", file=sys.stderr)
             rows.append(
                 {field: "" for field in FIELDS}
                 | {"code": landmark["code"], "external_ref": source.get("external_ref", ""), "reasoning": f"ERROR: {e}"}
             )
-        time.sleep(4)  # gentle pacing -- each record hits Overpass (shared, rate-limited) once and Gemini once
+            time.sleep(4)  # a real attempt was made and failed -- still worth pacing before the next one
+            continue
+
+        if made_network_call:
+            print(f"[{i}/{len(landmarks)}] {landmark['code']}... done", file=sys.stderr)
+            time.sleep(4)  # gentle pacing -- a fresh record hits Overpass (shared, rate-limited) once and the provider once
+        else:
+            skipped_already_resolved += 1
+            print(f"[{i}/{len(landmarks)}] {landmark['code']}... already resolved, reused", file=sys.stderr)
+
+    if skipped_already_resolved:
+        print(f"{skipped_already_resolved} record(s) reused a prior successful classification -- no network calls made for them.", file=sys.stderr)
 
     with open(out_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
