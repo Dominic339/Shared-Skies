@@ -8,6 +8,7 @@ for new API keys during testing).
 
 import json
 import os
+import time
 
 import requests
 
@@ -57,10 +58,23 @@ class GeminiProvider(EnrichmentProvider):
 
     def classify(self, prompt: str, timeout: int = 30) -> tuple[dict, str, Usage]:
         last_error: Exception | None = None
-        for attempt in range(2):  # one retry: cheap, and malformed JSON has been observed not to reproduce
-            text, resolved_model, usage = self._call(prompt, timeout)
+        for attempt in range(3):
+            try:
+                text, resolved_model, usage = self._call(prompt, timeout)
+            except requests.exceptions.HTTPError as e:
+                # 503 is Google's own "usually temporary, try again" signal --
+                # observed directly (recurred across several attempts today).
+                # 429 (quota) is a different problem retrying won't fix, so
+                # it's deliberately not caught here and propagates immediately.
+                if e.response is not None and e.response.status_code == 503 and attempt < 2:
+                    last_error = e
+                    time.sleep(5 * (attempt + 1))
+                    continue
+                raise
             try:
                 return json.loads(text), resolved_model, usage
             except json.JSONDecodeError as e:
+                # Also retry malformed JSON once -- confirmed earlier not to
+                # reproduce on an identical retry.
                 last_error = e
         raise last_error
