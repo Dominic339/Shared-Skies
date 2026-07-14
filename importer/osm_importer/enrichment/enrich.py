@@ -34,7 +34,9 @@ from ..community_match import haversine_km
 from ..fetch_osm import fetch_nearby_named
 from ..supabase_writer import get_client
 from . import wikimedia
-from .gemini_client import generate_json
+from .persistence import record_enrichment_run
+from .providers.base import EnrichmentProvider
+from .providers.gemini import GeminiProvider
 
 FIELDS = [
     "code",
@@ -137,10 +139,26 @@ def build_prompt(evidence: dict, radius_m: float) -> str:
     )
 
 
-def enrich_one(landmark: dict, source: dict, radius_m: float) -> dict:
+def enrich_one(client, landmark: dict, source: dict, radius_m: float, provider: EnrichmentProvider) -> dict:
     evidence = gather_evidence(landmark, source, radius_m)
     prompt = build_prompt(evidence, radius_m)
-    suggestion = generate_json(prompt)
+
+    try:
+        suggestion, resolved_model = provider.classify(prompt)
+    except Exception as e:
+        # Evidence gathering succeeded -- worth persisting even though the
+        # actual classification call failed, so a retry later doesn't need
+        # to re-run Overpass/Wikidata/Wikipedia for this record.
+        record_enrichment_run(
+            client, landmark["id"], provider.name, provider.__class__.__name__,
+            prompt, evidence, response=None, confidence=None, error=str(e),
+        )
+        raise
+
+    record_enrichment_run(
+        client, landmark["id"], provider.name, resolved_model,
+        prompt, evidence, response=suggestion, confidence=suggestion.get("confidence"),
+    )
 
     return {
         "code": landmark["code"],
@@ -163,8 +181,9 @@ def enrich_one(landmark: dict, source: dict, radius_m: float) -> dict:
     }
 
 
-def run(community_id: str, out_path: str, limit: int | None, radius_m: float) -> None:
+def run(community_id: str, out_path: str, limit: int | None, radius_m: float, provider: EnrichmentProvider | None = None) -> None:
     client = get_client()
+    provider = provider or GeminiProvider()
 
     from ..clusters import decode_point
 
@@ -200,7 +219,7 @@ def run(community_id: str, out_path: str, limit: int | None, radius_m: float) ->
         print(f"[{i}/{len(landmarks)}] {landmark['code']}...", file=sys.stderr)
         source = sources_by_landmark.get(landmark["id"], {})
         try:
-            rows.append(enrich_one(landmark, source, radius_m))
+            rows.append(enrich_one(client, landmark, source, radius_m, provider))
         except Exception as e:
             print(f"  ERROR: {e}", file=sys.stderr)
             rows.append(
