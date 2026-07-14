@@ -18,17 +18,21 @@ from .base import EnrichmentProvider, Usage
 class GeminiProvider(EnrichmentProvider):
     name = "gemini"
     MODEL_ALIAS = "gemini-flash-latest"
+    # If the primary model is specifically overloaded (not a general outage
+    # -- confirmed directly: gemini-flash-latest 503'd repeatedly while
+    # gemini-flash-lite-latest succeeded immediately, same API key, same
+    # moment), fall back to a lighter model rather than fail the whole
+    # batch. Classification quality held up in direct comparison on real
+    # records.
+    FALLBACK_MODEL_ALIAS = "gemini-flash-lite-latest"
 
     def __init__(self, disable_thinking: bool = True):
-        self.api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.MODEL_ALIAS}:generateContent"
-        # This is a bounded classification task, not multi-step reasoning --
-        # extended "thinking" tokens showed up as a real cost factor in
-        # testing (97 tokens of thinking for a one-word reply) without an
-        # apparent quality need for this task. Toggle-able in case output
-        # quality turns out to depend on it after all.
         self.disable_thinking = disable_thinking
 
-    def _call(self, prompt: str, timeout: int) -> tuple[str, str, Usage]:
+    def _api_url(self, model_alias: str) -> str:
+        return f"https://generativelanguage.googleapis.com/v1beta/models/{model_alias}:generateContent"
+
+    def _call(self, prompt: str, timeout: int, model_alias: str) -> tuple[str, str, Usage]:
         api_key = os.environ["GEMINI_API_KEY"]
         generation_config = {
             "responseMimeType": "application/json",
@@ -38,7 +42,7 @@ class GeminiProvider(EnrichmentProvider):
             generation_config["thinkingConfig"] = {"thinkingBudget": 0}
 
         response = requests.post(
-            f"{self.api_url}?key={api_key}",
+            f"{self._api_url(model_alias)}?key={api_key}",
             headers={"Content-Type": "application/json"},
             json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": generation_config},
             timeout=timeout,
@@ -46,7 +50,7 @@ class GeminiProvider(EnrichmentProvider):
         response.raise_for_status()
         data = response.json()
         text = data["candidates"][0]["content"]["parts"][0]["text"]
-        resolved_model = data.get("modelVersion", self.MODEL_ALIAS)
+        resolved_model = data.get("modelVersion", model_alias)
 
         usage_meta = data.get("usageMetadata", {})
         usage = Usage(
@@ -56,14 +60,15 @@ class GeminiProvider(EnrichmentProvider):
         )
         return text, resolved_model, usage
 
-    def classify(self, prompt: str, timeout: int = 30) -> tuple[dict, str, Usage]:
+    def _classify_against(self, prompt: str, timeout: int, model_alias: str) -> tuple[dict, str, Usage]:
+        """Retry loop against one specific model alias -- raises after
+        exhausting attempts, doesn't fall back itself (that's classify()'s job)."""
         last_error: Exception | None = None
         for attempt in range(3):
             try:
-                text, resolved_model, usage = self._call(prompt, timeout)
+                text, resolved_model, usage = self._call(prompt, timeout, model_alias)
             except requests.exceptions.HTTPError as e:
-                # 503 is Google's own "usually temporary, try again" signal --
-                # observed directly (recurred across several attempts today).
+                # 503 is Google's own "usually temporary, try again" signal.
                 # 429 (quota) is a different problem retrying won't fix, so
                 # it's deliberately not caught here and propagates immediately.
                 if e.response is not None and e.response.status_code == 503 and attempt < 2:
@@ -78,3 +83,11 @@ class GeminiProvider(EnrichmentProvider):
                 # reproduce on an identical retry.
                 last_error = e
         raise last_error
+
+    def classify(self, prompt: str, timeout: int = 30) -> tuple[dict, str, Usage]:
+        try:
+            return self._classify_against(prompt, timeout, self.MODEL_ALIAS)
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 503:
+                return self._classify_against(prompt, timeout, self.FALLBACK_MODEL_ALIAS)
+            raise
