@@ -1,0 +1,230 @@
+"""
+Evidence-gathering + AI-classification pass for unnamed imported
+landmarks. Never touches the live `landmarks` table -- writes a CSV of
+suggestions for human review, same spirit as review_export.py.
+
+For each unnamed record, gathers:
+  - its own raw OSM tags (already imported, from landmark_sources)
+  - a direct Wikidata/Wikipedia pull, if the object already carries those
+    tags (a lookup, not a guess)
+  - nearby named OSM objects within radius_m (context: "what park/street/
+    building is this thing actually part of?")
+
+Then asks Gemini to classify the record as one of:
+  - recovered_landmark  -- evidence clearly identifies a real destination
+  - landmark_feature    -- belongs under a larger parent place
+  - archive_ignore      -- valid OSM data, not meaningful Shared Skies content
+
+The model is explicitly instructed to summarize only the evidence given
+and say so when evidence is insufficient, never invent history. Every
+result is marked for human review regardless of confidence -- this pass
+produces suggestions, not publications.
+
+Usage:
+    python -m osm_importer.enrichment.enrich --community-id <uuid> --out enrichment_review.csv --limit 10
+"""
+
+import argparse
+import csv
+import json
+import sys
+import time
+
+from ..community_match import haversine_km
+from ..fetch_osm import fetch_nearby_named
+from ..supabase_writer import get_client
+from . import wikimedia
+from .gemini_client import generate_json
+
+FIELDS = [
+    "code",
+    "external_ref",
+    "category",
+    "lat",
+    "lon",
+    "own_raw_tags",
+    "wikidata_hit",
+    "wikipedia_hit",
+    "nearby_named",
+    "suggested_name",
+    "suggested_role",
+    "suggested_parent_name",
+    "description",
+    "confidence",
+    "citations",
+    "human_review_required",
+    "reasoning",
+]
+
+PROMPT_TEMPLATE = """You are helping classify an unnamed real-world map object imported from \
+OpenStreetMap for a game called Shared Skies, which turns real places into "Landmarks" players \
+can visit.
+
+You must base your answer ONLY on the evidence provided below. Do not invent history, names, or \
+facts that are not directly supported by this evidence. If the evidence is insufficient to \
+determine what this object is, say so honestly rather than guessing.
+
+EVIDENCE
+--------
+Raw OSM tags on the object itself:
+{raw_tags}
+
+Direct Wikidata lookup (if the object had a wikidata tag):
+{wikidata}
+
+Direct Wikipedia summary (if the object had a wikipedia tag):
+{wikipedia}
+
+Named OSM objects within {radius_m}m of this object:
+{nearby}
+
+TASK
+----
+Classify this object as exactly one of:
+  - "recovered_landmark": the evidence clearly identifies this as a real, nameable, standalone \
+destination worth its own map pin.
+  - "landmark_feature": the evidence suggests this is a real but minor component that belongs \
+under a larger nearby destination (e.g. an information board inside a named park, one plaque \
+among several at one memorial).
+  - "archive_ignore": this is valid OSM mapping data but not meaningful standalone content for \
+a game about visiting places (e.g. an unlabeled utility node, insufficient evidence to say \
+anything useful).
+
+Respond with ONLY a JSON object with these exact keys:
+{{
+  "suggested_name": string or null,
+  "suggested_role": "recovered_landmark" | "landmark_feature" | "archive_ignore",
+  "suggested_parent_name": string or null (only if suggested_role is landmark_feature, must be \
+one of the nearby named objects listed above),
+  "description": string or null (one or two factual sentences, ONLY from the evidence above, or \
+null if there isn't enough to say anything factual),
+  "confidence": number 0-100,
+  "citations": array of strings, each naming which piece of evidence above supports your answer,
+  "reasoning": short string explaining your classification
+}}
+"""
+
+
+def gather_evidence(landmark: dict, source: dict, radius_m: float) -> dict:
+    raw_tags = dict(source.get("raw_payload") or {})
+    raw_tags.pop("_import_batch_id", None)
+
+    wikidata = None
+    if raw_tags.get("wikidata"):
+        wikidata = wikimedia.fetch_wikidata_entity(raw_tags["wikidata"])
+
+    wikipedia = None
+    if raw_tags.get("wikipedia"):
+        wikipedia = wikimedia.fetch_wikipedia_summary(raw_tags["wikipedia"])
+
+    nearby_elements = fetch_nearby_named(landmark["lat"], landmark["lon"], radius_m=radius_m)
+    nearby = []
+    for el in nearby_elements:
+        distance_m = haversine_km(landmark["lat"], landmark["lon"], el["lat"], el["lon"]) * 1000
+        nearby.append({"name": el["tags"]["name"], "distance_m": round(distance_m, 1), "tags": el["tags"]})
+    nearby.sort(key=lambda n: n["distance_m"])
+
+    return {"raw_tags": raw_tags, "wikidata": wikidata, "wikipedia": wikipedia, "nearby": nearby}
+
+
+def build_prompt(evidence: dict, radius_m: float) -> str:
+    return PROMPT_TEMPLATE.format(
+        raw_tags=json.dumps(evidence["raw_tags"], indent=2) or "(none)",
+        wikidata=json.dumps(evidence["wikidata"]) if evidence["wikidata"] else "(none -- no wikidata tag, or lookup failed)",
+        wikipedia=json.dumps(evidence["wikipedia"]) if evidence["wikipedia"] else "(none -- no wikipedia tag, or lookup failed)",
+        nearby=json.dumps(evidence["nearby"][:10], indent=2) if evidence["nearby"] else "(none found)",
+        radius_m=radius_m,
+    )
+
+
+def enrich_one(landmark: dict, source: dict, radius_m: float) -> dict:
+    evidence = gather_evidence(landmark, source, radius_m)
+    prompt = build_prompt(evidence, radius_m)
+    suggestion = generate_json(prompt)
+
+    return {
+        "code": landmark["code"],
+        "external_ref": source.get("external_ref", ""),
+        "category": landmark["category"],
+        "lat": landmark["lat"],
+        "lon": landmark["lon"],
+        "own_raw_tags": json.dumps(evidence["raw_tags"], sort_keys=True),
+        "wikidata_hit": json.dumps(evidence["wikidata"]) if evidence["wikidata"] else "",
+        "wikipedia_hit": json.dumps(evidence["wikipedia"]) if evidence["wikipedia"] else "",
+        "nearby_named": "; ".join(f"{n['name']} ({n['distance_m']}m)" for n in evidence["nearby"][:5]),
+        "suggested_name": suggestion.get("suggested_name") or "",
+        "suggested_role": suggestion.get("suggested_role", ""),
+        "suggested_parent_name": suggestion.get("suggested_parent_name") or "",
+        "description": suggestion.get("description") or "",
+        "confidence": suggestion.get("confidence", ""),
+        "citations": "; ".join(suggestion.get("citations", [])),
+        "human_review_required": True,  # always -- this pass produces suggestions, not publications
+        "reasoning": suggestion.get("reasoning", ""),
+    }
+
+
+def run(community_id: str, out_path: str, limit: int | None, radius_m: float) -> None:
+    client = get_client()
+
+    from ..clusters import decode_point
+
+    landmarks = (
+        client.table("landmarks")
+        .select("id,code,name,category,location")
+        .eq("community_id", community_id)
+        .eq("name", "(unnamed)")
+        .execute()
+        .data
+    )
+    if limit is not None:
+        landmarks = landmarks[:limit]
+
+    for l in landmarks:
+        lat, lon = decode_point(l["location"])
+        l["lat"], l["lon"] = lat, lon
+
+    landmark_ids = [l["id"] for l in landmarks]
+    sources_by_landmark = {}
+    if landmark_ids:
+        sources = (
+            client.table("landmark_sources")
+            .select("landmark_id,external_ref,raw_payload")
+            .in_("landmark_id", landmark_ids)
+            .execute()
+            .data
+        )
+        sources_by_landmark = {s["landmark_id"]: s for s in sources}
+
+    rows = []
+    for i, landmark in enumerate(landmarks, start=1):
+        print(f"[{i}/{len(landmarks)}] {landmark['code']}...", file=sys.stderr)
+        source = sources_by_landmark.get(landmark["id"], {})
+        try:
+            rows.append(enrich_one(landmark, source, radius_m))
+        except Exception as e:
+            print(f"  ERROR: {e}", file=sys.stderr)
+            rows.append(
+                {field: "" for field in FIELDS}
+                | {"code": landmark["code"], "external_ref": source.get("external_ref", ""), "reasoning": f"ERROR: {e}"}
+            )
+        time.sleep(4)  # gentle pacing -- each record hits Overpass (shared, rate-limited) once and Gemini once
+
+    with open(out_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"Wrote {len(rows)} enrichment suggestions to {out_path}", file=sys.stderr)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Evidence + AI classification pass for unnamed landmarks.")
+    parser.add_argument("--community-id", required=True)
+    parser.add_argument("--out", default="enrichment_review.csv")
+    parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--radius-m", type=float, default=150.0)
+    args = parser.parse_args()
+    run(args.community_id, args.out, args.limit, args.radius_m)
+
+
+if __name__ == "__main__":
+    main()

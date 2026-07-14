@@ -1,3 +1,4 @@
 supabase>=2.0  # only imported when SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY are set
-# Fetching OSM data shells out to the system `curl` binary rather than a
-# Python HTTP library — see osm_importer/fetch_osm.py for why.
+requests>=2.31  # Wikidata/Wikipedia/Gemini calls (enrichment/) -- these work fine with requests
+# given a proper User-Agent; only the Overpass fetch itself shells out to
+# curl instead -- see osm_importer/fetch_osm.py for why.

@@ -74,7 +74,6 @@ correctly, not just that the insert didn't error.
 
 ## What this deliberately does not do (yet)
 
-- No AI-generated descriptions.
 - No postcard template assignment.
 - No souvenir category suggestions.
 - No accessibility inference.
@@ -91,3 +90,43 @@ Confidence weights live in `osm_importer/scoring.py` as named constants;
 routing thresholds (95 / 80) live in the same file as `route()`. Both are
 plain Python, not database configuration — change them and rerun, no
 migration involved.
+
+## Combined reports (community_report.py, clusters.py)
+
+Query the live database directly rather than a single run's in-memory
+candidates, so they reflect everything accumulated across every batch
+for a Community:
+
+```bash
+python -m osm_importer.community_report --community-id <uuid>
+python -m osm_importer.clusters --community-id <uuid> --radius-m 40
+python -m osm_importer.review_export --community-id <uuid> --out review.csv
+```
+
+## Enrichment (osm_importer/enrichment/)
+
+A narrow evidence-gathering + AI-classification pass for unnamed
+imported landmarks -- never touches the live `landmarks` table, only
+produces a CSV of suggestions for human review:
+
+```bash
+export GEMINI_API_KEY="<your free Google AI Studio key>"
+python -m osm_importer.enrichment.enrich --community-id <uuid> --out enrichment_review.csv --limit 10
+```
+
+For each unnamed record it gathers: the object's own OSM tags, a direct
+Wikidata/Wikipedia pull if the object already carries those tags (a
+lookup, not a guess), and named OSM objects within `--radius-m` (default
+150m). Only that evidence is given to Gemini (`gemini-flash-latest`,
+Google's free tier), which is explicitly instructed to summarize what
+it's given and say so when evidence is insufficient rather than invent
+history. Every record is classified as `recovered_landmark` (a real
+standalone destination), `landmark_feature` (belongs under a named
+nearby parent), or `archive_ignore` (valid OSM data, not meaningful
+Shared Skies content) -- with confidence, citations, and reasoning, all
+marked for human review regardless of confidence.
+
+Uses `requests` directly (not the curl-subprocess workaround
+`fetch_osm.py` needs for Overpass) -- Wikidata/Wikipedia's public APIs
+just needed a real User-Agent header, which is their documented
+requirement, not a proxy or fingerprinting issue like Overpass's.

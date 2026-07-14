@@ -27,31 +27,16 @@ from .tag_rules import overpass_selectors
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 
-def build_query(min_lat: float, min_lon: float, max_lat: float, max_lon: float, timeout: int = 25) -> str:
-    bbox = f"{min_lat},{min_lon},{max_lat},{max_lon}"
-    clauses = "\n".join(f'  node{selector}({bbox});' for selector in overpass_selectors())
-    return f"""[out:json][timeout:{timeout}];
-(
-{clauses}
-);
-out body;
-"""
-
-
-def fetch_nodes(
-    min_lat: float, min_lon: float, max_lat: float, max_lon: float, timeout: int = 25, max_attempts: int = 3
-) -> list[dict]:
-    """Return raw Overpass 'node' elements within the given bounding box.
-    Each element looks like {"type": "node", "id": ..., "lat": ..., "lon": ..., "tags": {...}}.
-    Nodes with no tags at all are dropped (they carry no usable information).
+def run_overpass_query(query: str, timeout: int = 25, max_attempts: int = 3) -> list[dict]:
+    """Run a raw Overpass QL query string and return its 'elements' list.
+    Shared low-level runner behind both the bounding-box fetch below and
+    the nearby-context lookup used by the enrichment pipeline.
 
     The public Overpass instance is shared, rate-limited infrastructure and
     occasionally returns a transient non-JSON error body (or an empty
     response) even when the query itself is fine — observed directly while
     building this importer, not a hypothetical. Retried a few times with a
     short backoff before giving up for real."""
-    query = build_query(min_lat, min_lon, max_lat, max_lon, timeout=timeout)
-
     last_error: Exception | None = None
     for attempt in range(1, max_attempts + 1):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".ql", delete=True) as f:
@@ -69,10 +54,44 @@ def fetch_nodes(
             if attempt < max_attempts:
                 time.sleep(15 * attempt)
             continue
-        elements = payload.get("elements", [])
-        return [el for el in elements if el.get("tags")]
+        return payload.get("elements", [])
 
     raise RuntimeError(
         f"Overpass API returned a non-JSON response {max_attempts} times in a row "
         f"(likely transient rate limiting/server load, not a query error)"
     ) from last_error
+
+
+def build_query(min_lat: float, min_lon: float, max_lat: float, max_lon: float, timeout: int = 25) -> str:
+    bbox = f"{min_lat},{min_lon},{max_lat},{max_lon}"
+    clauses = "\n".join(f'  node{selector}({bbox});' for selector in overpass_selectors())
+    return f"""[out:json][timeout:{timeout}];
+(
+{clauses}
+);
+out body;
+"""
+
+
+def fetch_nodes(
+    min_lat: float, min_lon: float, max_lat: float, max_lon: float, timeout: int = 25, max_attempts: int = 3
+) -> list[dict]:
+    """Return raw Overpass 'node' elements within the given bounding box.
+    Each element looks like {"type": "node", "id": ..., "lat": ..., "lon": ..., "tags": {...}}.
+    Nodes with no tags at all are dropped (they carry no usable information)."""
+    query = build_query(min_lat, min_lon, max_lat, max_lon, timeout=timeout)
+    elements = run_overpass_query(query, timeout=timeout, max_attempts=max_attempts)
+    return [el for el in elements if el.get("tags")]
+
+
+def fetch_nearby_named(lat: float, lon: float, radius_m: float = 150, timeout: int = 25) -> list[dict]:
+    """Return named OSM nodes within radius_m of a point, for enrichment
+    context ("what else is right next to this unnamed object?"). Includes
+    the object's own tags where present, unlike fetch_nodes's tag filter,
+    since any named nearby thing is useful evidence regardless of category."""
+    query = f"""[out:json][timeout:{timeout}];
+node(around:{radius_m},{lat},{lon})["name"];
+out body;
+"""
+    elements = run_overpass_query(query, timeout=timeout)
+    return [el for el in elements if el.get("tags", {}).get("name")]
