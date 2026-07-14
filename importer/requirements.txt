@@ -1,0 +1,3 @@
+supabase>=2.0  # only imported when SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY are set
+# Fetching OSM data shells out to the system `curl` binary rather than a
+# Python HTTP library — see osm_importer/fetch_osm.py for why.
