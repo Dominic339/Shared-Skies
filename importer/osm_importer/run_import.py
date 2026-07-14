@@ -28,6 +28,7 @@ from .community_match import CommunityRef, assign_nearest_community
 from .dedupe import flag_batch_duplicates
 from .fetch_osm import fetch_nodes
 from .normalize import normalize_elements
+from .report import build_summary
 from .scoring import route, score_candidate
 
 CSV_FIELDS = [
@@ -103,15 +104,25 @@ def run(
 
     print(f"Wrote {len(candidates)} candidates to {out_path} (batch_id={batch_id})", file=sys.stderr)
 
+    written = None
+    write_errors = 0
     if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
         from .supabase_writer import write_candidates
 
         limit_note = f", write_limit={write_limit}" if write_limit is not None else ""
         print(f"SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY set — writing candidates to Supabase{limit_note}...", file=sys.stderr)
-        summary = write_candidates(candidates, batch_id=batch_id, write_limit=write_limit)
-        print(f"  {summary}", file=sys.stderr)
+        write_result = write_candidates(candidates, batch_id=batch_id, write_limit=write_limit)
+        written = write_result["inserted"]
+        write_errors = len(write_result["errors"])
+        if write_result["skipped_already_imported"]:
+            print(f"  {write_result['skipped_already_imported']} candidate(s) already imported previously, skipped.", file=sys.stderr)
+        for err in write_result["errors"]:
+            print(f"  WRITE ERROR ({err['external_ref']}, {err['name']!r}): {err['error']}", file=sys.stderr)
     else:
         print("No Supabase credentials in the environment — dry run only, nothing written to a database.", file=sys.stderr)
+
+    summary = build_summary(candidates, batch_id=batch_id, written=written, write_errors=write_errors)
+    print("\n" + summary.render() + "\n", file=sys.stderr)
 
     return candidates
 
