@@ -31,25 +31,46 @@ project exists — see below.
 ## Writing into a real Supabase project
 
 Once a Supabase project exists with the schema in
-`../supabase/migrations/` applied:
+`../supabase/migrations/` applied (and at least one real Community row
+inserted for whatever area you're importing — the importer matches
+candidates against real `communities` rows, not `sample_communities.json`,
+once you're pointed at a live project):
 
 ```bash
 export SUPABASE_URL="https://<project>.supabase.co"
 export SUPABASE_SERVICE_ROLE_KEY="<service role key — keep this secret, never ship it to a client>"
-python -m osm_importer.run_import ...
+python -m osm_importer.run_import \
+  --min-lat 42.70 --min-lon -71.52 --max-lat 42.82 --max-lon -71.40 \
+  --communities real_communities.json \
+  --out review.csv \
+  --batch-id osm_nashua_2026_07_14_001 \
+  --write-limit 20
 ```
 
 If both environment variables are set, candidates are also inserted into
-`landmarks` (as `candidate` or `rumor`, never `published`) and
-`landmark_sources` (provenance). The CSV is still written either way —
-it's the reviewable record regardless of whether the database write also
-ran.
+`landmarks` (as `candidate` or `rumor`, never `published`),
+`landmark_sources` (provenance, tagged with `--batch-id` inside
+`raw_payload._import_batch_id` so a bad run can be found and removed:
+`delete from landmark_sources where raw_payload->>'_import_batch_id' = '...'`),
+and, for anything dedupe.py flagged, a `submission_tickets` +
+`duplicate_candidates` pair. The CSV is still written either way — it's
+the reviewable record regardless of whether the database write also ran.
+
+Use `--write-limit N` for a first controlled batch (e.g. 10-25) before
+running the full area — every candidate still appears in the CSV either
+way, only the database write is capped, and it takes the highest-
+confidence candidates first.
 
 **This write path has not yet been exercised against a real Supabase
-project** — there wasn't one to test against when this was written. The
-dry-run/CSV path has been validated against live OSM data for Nashua, NH;
-treat `supabase_writer.py` as reviewed-but-unproven until it's run for
-real once and the resulting rows are checked by hand.
+project** — there wasn't one to test against when most of this was
+written. The dry-run/CSV path has been validated against live OSM data
+for Nashua, NH. One specific thing to check on the first real run: the
+`location` field is sent as a WKT string (`"POINT(lon lat)"`); this
+should cast to `geography(Point,4326)` the same way it would in a raw SQL
+insert, but that cast behavior through PostgREST (what the Supabase
+client talks to) hasn't been confirmed — inspect the first few rows in
+Supabase Studio's map/geometry view to make sure the coordinates landed
+correctly, not just that the insert didn't error.
 
 ## What this deliberately does not do (yet)
 

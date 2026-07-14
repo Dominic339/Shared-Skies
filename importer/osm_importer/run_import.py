@@ -12,7 +12,9 @@ Usage:
     python -m osm_importer.run_import \\
         --min-lat 42.70 --min-lon -71.52 --max-lat 42.82 --max-lon -71.40 \\
         --communities sample_communities.json \\
-        --out review.csv
+        --out review.csv \\
+        --batch-id osm_nashua_2026_07_14_001 \\
+        --write-limit 20
 """
 
 import argparse
@@ -20,6 +22,7 @@ import csv
 import json
 import os
 import sys
+from datetime import date
 
 from .community_match import CommunityRef, assign_nearest_community
 from .dedupe import flag_batch_duplicates
@@ -38,6 +41,7 @@ CSV_FIELDS = [
     "confidence_score",
     "routing_decision",
     "possible_duplicate_of",
+    "import_batch_id",
     "raw_tags",
 ]
 
@@ -48,7 +52,20 @@ def load_communities(path: str) -> list[CommunityRef]:
     return [CommunityRef(id=r["id"], name=r["name"], lat=r["lat"], lon=r["lon"]) for r in rows]
 
 
-def run(min_lat: float, min_lon: float, max_lat: float, max_lon: float, communities_path: str, out_path: str) -> list:
+def default_batch_id() -> str:
+    return f"osm_import_{date.today().isoformat()}"
+
+
+def run(
+    min_lat: float,
+    min_lon: float,
+    max_lat: float,
+    max_lon: float,
+    communities_path: str,
+    out_path: str,
+    batch_id: str,
+    write_limit: int | None = None,
+) -> list:
     print(f"Fetching OSM nodes for bbox ({min_lat},{min_lon},{max_lat},{max_lon})...", file=sys.stderr)
     elements = fetch_nodes(min_lat, min_lon, max_lat, max_lon)
     print(f"  {len(elements)} tagged nodes returned.", file=sys.stderr)
@@ -79,17 +96,20 @@ def run(min_lat: float, min_lon: float, max_lat: float, max_lon: float, communit
                     "confidence_score": c.confidence_score,
                     "routing_decision": c.routing_decision,
                     "possible_duplicate_of": c.possible_duplicate_of or "",
+                    "import_batch_id": batch_id,
                     "raw_tags": json.dumps(c.raw_tags, sort_keys=True),
                 }
             )
 
-    print(f"Wrote {len(candidates)} candidates to {out_path}", file=sys.stderr)
+    print(f"Wrote {len(candidates)} candidates to {out_path} (batch_id={batch_id})", file=sys.stderr)
 
     if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
         from .supabase_writer import write_candidates
 
-        print("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY set — writing candidates to Supabase...", file=sys.stderr)
-        write_candidates(candidates)
+        limit_note = f", write_limit={write_limit}" if write_limit is not None else ""
+        print(f"SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY set — writing candidates to Supabase{limit_note}...", file=sys.stderr)
+        summary = write_candidates(candidates, batch_id=batch_id, write_limit=write_limit)
+        print(f"  {summary}", file=sys.stderr)
     else:
         print("No Supabase credentials in the environment — dry run only, nothing written to a database.", file=sys.stderr)
 
@@ -104,9 +124,12 @@ def main():
     parser.add_argument("--max-lon", type=float, required=True)
     parser.add_argument("--communities", required=True, help="Path to a JSON file of [{id, name, lat, lon}, ...]")
     parser.add_argument("--out", default="review.csv")
+    parser.add_argument("--batch-id", default=None, help="Stable identifier stamped into every row (CSV and DB). Defaults to osm_import_<today>.")
+    parser.add_argument("--write-limit", type=int, default=None, help="Cap how many candidates (highest confidence first) get written to Supabase. CSV always contains the full batch.")
     args = parser.parse_args()
 
-    run(args.min_lat, args.min_lon, args.max_lat, args.max_lon, args.communities, args.out)
+    batch_id = args.batch_id or default_batch_id()
+    run(args.min_lat, args.min_lon, args.max_lat, args.max_lon, args.communities, args.out, batch_id, args.write_limit)
 
 
 if __name__ == "__main__":
