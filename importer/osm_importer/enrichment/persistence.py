@@ -20,6 +20,7 @@ def record_enrichment_run(
     response: dict | None,
     confidence: float | None,
     error: str | None = None,
+    duration_ms: int | None = None,
     entity_table: str = "landmarks",
 ) -> None:
     client.table("enrichment_runs").insert(
@@ -33,5 +34,6 @@ def record_enrichment_run(
             "response": response,
             "confidence": confidence,
             "error": error,
+            "duration_ms": duration_ms,
         }
     ).execute()

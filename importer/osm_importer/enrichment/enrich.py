@@ -143,21 +143,24 @@ def enrich_one(client, landmark: dict, source: dict, radius_m: float, provider: 
     evidence = gather_evidence(landmark, source, radius_m)
     prompt = build_prompt(evidence, radius_m)
 
+    start = time.monotonic()
     try:
         suggestion, resolved_model = provider.classify(prompt)
     except Exception as e:
+        duration_ms = round((time.monotonic() - start) * 1000)
         # Evidence gathering succeeded -- worth persisting even though the
         # actual classification call failed, so a retry later doesn't need
         # to re-run Overpass/Wikidata/Wikipedia for this record.
         record_enrichment_run(
             client, landmark["id"], provider.name, getattr(provider, "MODEL_ALIAS", provider.name),
-            prompt, evidence, response=None, confidence=None, error=str(e),
+            prompt, evidence, response=None, confidence=None, error=str(e), duration_ms=duration_ms,
         )
         raise
+    duration_ms = round((time.monotonic() - start) * 1000)
 
     record_enrichment_run(
         client, landmark["id"], provider.name, resolved_model,
-        prompt, evidence, response=suggestion, confidence=suggestion.get("confidence"),
+        prompt, evidence, response=suggestion, confidence=suggestion.get("confidence"), duration_ms=duration_ms,
     )
 
     return {
