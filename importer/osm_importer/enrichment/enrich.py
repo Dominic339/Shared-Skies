@@ -237,7 +237,7 @@ def enrich_one(client, landmark: dict, source: dict, radius_m: float, provider: 
 
     start = time.monotonic()
     try:
-        suggestion, resolved_model = provider.classify(prompt)
+        suggestion, resolved_model, usage = provider.classify(prompt)
     except Exception as e:
         duration_ms = round((time.monotonic() - start) * 1000)
         record_enrichment_run(
@@ -250,6 +250,7 @@ def enrich_one(client, landmark: dict, source: dict, radius_m: float, provider: 
     record_enrichment_run(
         client, landmark["id"], provider.name, resolved_model,
         prompt, evidence, response=suggestion, confidence=suggestion.get("confidence"), duration_ms=duration_ms,
+        input_tokens=usage.input_tokens, output_tokens=usage.output_tokens, thinking_tokens=usage.thinking_tokens,
     )
 
     return to_csv_row(landmark, source, evidence, suggestion), True

@@ -7,8 +7,6 @@ model or an improved prompt can be compared or batch-regenerated without
 re-running the underlying evidence gathering at all.
 """
 
-from typing import Any
-
 
 def record_enrichment_run(
     client,
@@ -21,6 +19,9 @@ def record_enrichment_run(
     confidence: float | None,
     error: str | None = None,
     duration_ms: int | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    thinking_tokens: int | None = None,
     entity_table: str = "landmarks",
 ) -> None:
     client.table("enrichment_runs").insert(
@@ -35,5 +36,8 @@ def record_enrichment_run(
             "confidence": confidence,
             "error": error,
             "duration_ms": duration_ms,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "thinking_tokens": thinking_tokens,
         }
     ).execute()
