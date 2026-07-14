@@ -6,7 +6,10 @@ you run it, so an edit IS how you correct a suggestion before approving
 it) and applies the approved changes to the live `landmarks` table.
 
 Per suggested_role, "approve" means:
-  - archive_ignore:     lifecycle_state -> 'archived'
+  - archive_ignore:     lifecycle_state -> 'rejected' ("reviewed and
+                         declined" -- not 'archived', which specifically
+                         means "was published, no longer active"; these
+                         records were never published)
   - recovered_landmark: name/description updated from the (possibly
                          edited) ai_suggested_* columns
   - landmark_feature:   NOT applied to the landmark itself -- there's no
@@ -74,7 +77,10 @@ def apply_row(client, code_to_id: dict, row: dict, dry_run: bool) -> None:
         )
     elif decision == "approve":
         if role == "archive_ignore":
-            updates["lifecycle_state"] = "archived"
+            # 'rejected' ("reviewed and declined"), not 'archived' ("was
+            # published, no longer active") -- these records were never
+            # published, so 'archived' would misrepresent their history.
+            updates["lifecycle_state"] = "rejected"
         elif role == "recovered_landmark":
             if row.get("ai_suggested_name"):
                 updates["name"] = row["ai_suggested_name"]
@@ -111,6 +117,13 @@ def apply_row(client, code_to_id: dict, row: dict, dry_run: bool) -> None:
             f"Pending Landmark/Feature schema support -- not applied to this record.",
             dry_run,
         )
+
+    # A reviewer's free-text note is recorded regardless of what decision
+    # was made -- it's context for whoever looks at this record later, not
+    # itself an instruction to change anything.
+    reviewer_note = (row.get("notes") or "").strip()
+    if reviewer_note:
+        add_content_note(client, code_to_id, code, f"Reviewer note: {reviewer_note}", dry_run)
 
     if updates:
         if dry_run:
