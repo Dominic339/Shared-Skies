@@ -130,3 +130,31 @@ Uses `requests` directly (not the curl-subprocess workaround
 `fetch_osm.py` needs for Overpass) -- Wikidata/Wikipedia's public APIs
 just needed a real User-Agent header, which is their documented
 requirement, not a proxy or fingerprinting issue like Overpass's.
+
+Resumable by construction: evidence is cached the moment it's gathered,
+and already-classified records are skipped entirely, so quota limits or
+API outages are a pause, not lost work -- just run the same command
+again later. `enrichment/providers/gemini.py` also falls back to
+`gemini-flash-lite-latest` if the primary model returns a sustained 503
+(confirmed directly: the primary model can be specifically overloaded
+while the lite one responds fine).
+
+## Before running anything: validate_pipeline.py
+
+```bash
+python -m osm_importer.validate_pipeline
+```
+
+Checks Supabase connectivity, that all expected tables/columns exist,
+and (if `GEMINI_API_KEY` is set) that the enrichment API is reachable --
+catches schema drift, a stale migration, or a quota/outage in five
+seconds instead of mid-batch. Run this first, especially after pulling
+someone else's changes or before a large import.
+
+## Known flaky case: LM000062 (Nashua)
+
+This specific record has repeatedly failed at the Overpass
+evidence-gathering step (not classification) across multiple sessions,
+seemingly just from rate-limiting/timing rather than anything wrong with
+its data. Worth treating as a standing spot-check: if a future importer
+change makes this record consistently succeed, that's a good sign.
