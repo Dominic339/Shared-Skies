@@ -150,7 +150,7 @@ def enrich_one(client, landmark: dict, source: dict, radius_m: float, provider: 
         # actual classification call failed, so a retry later doesn't need
         # to re-run Overpass/Wikidata/Wikipedia for this record.
         record_enrichment_run(
-            client, landmark["id"], provider.name, provider.__class__.__name__,
+            client, landmark["id"], provider.name, getattr(provider, "MODEL_ALIAS", provider.name),
             prompt, evidence, response=None, confidence=None, error=str(e),
         )
         raise
