@@ -251,10 +251,15 @@ create table landmarks (
   )),
 
   -- Source confidence: how much we trust that this place *exists* and the
-  -- imported facts about it, independent of community activity.
-  source_confidence text not null default 'unverified' check (source_confidence in (
-    'unverified', 'low', 'medium', 'high'
-  )),
+  -- imported facts about it, independent of community activity. Stored as a
+  -- 0-100 score (not a category) so import-pipeline thresholds can compare
+  -- directly against it (e.g. >=95 auto-publish, 80-95 needs moderator
+  -- review, <80 stays a Rumor). A human-readable bucket ('high'/'medium'/
+  -- 'low') should be derived from this number at query/display time, not
+  -- stored alongside it — a second column would just be another place for
+  -- the two to drift out of sync.
+  source_confidence numeric(5, 2) not null default 0
+    check (source_confidence >= 0 and source_confidence <= 100),
 
   -- Community verification: independent of source confidence. Only
   -- meaningful for player-submitted candidates (`landmark_sources.source_type
@@ -281,10 +286,10 @@ create trigger trg_landmarks_updated_at before update on landmarks
   for each row execute function set_updated_at();
 
 comment on column landmarks.source_confidence is
-  'Confidence that the place exists and its imported facts are accurate — '
-  'independent of community_verification_status. An OSM-imported park can '
-  'be source_confidence=high, community_verification_status=not_required, '
-  'lifecycle_state=seeded on day one with zero player visits.';
+  'Confidence (0-100) that the place exists and its imported facts are '
+  'accurate — independent of community_verification_status. An OSM-imported '
+  'park can be source_confidence=97, community_verification_status='
+  'not_required, lifecycle_state=seeded on day one with zero player visits.';
 
 -- Append-only provenance log. A landmark can accumulate more than one
 -- source record over time (originally OSM, later cross-matched against a
@@ -713,6 +718,23 @@ create table moderation_actions (
 create index moderation_actions_ticket_idx on moderation_actions (ticket_id);
 create index moderation_actions_target_idx on moderation_actions (target_table, target_id);
 
+-- Private developer notes attached to any content row — "needs better
+-- postcard art", "museum planned here", "replace this description later".
+-- Never shown to players; exists purely so the person maintaining 30,000
+-- landmarks doesn't have to remember every loose end. Polymorphic, same
+-- pattern as pack_contents, for the same reason: one small table instead of
+-- a notes table per content type.
+create table content_notes (
+  id uuid primary key default gen_random_uuid(),
+  entity_table text not null,
+  entity_id uuid not null,
+  author_id uuid references profiles (id) on delete set null,
+  note text not null,
+  resolved boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index content_notes_entity_idx on content_notes (entity_table, entity_id);
+
 -- Generic append-only history. Populated by triggers attached to whichever
 -- tables need it (see record_audit_log() below + example attachments).
 create table audit_log (
@@ -798,6 +820,7 @@ alter table duplicate_candidates enable row level security;
 alter table moderation_actions enable row level security;
 alter table audit_log enable row level security;
 alter table landmark_sources enable row level security;
+alter table content_notes enable row level security;
 
 -- Public content: readable by anyone once published and not archived.
 create policy communities_public_read on communities
