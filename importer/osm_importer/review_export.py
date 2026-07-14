@@ -1,10 +1,17 @@
 """
 A practical, spreadsheet-based review workflow for everything imported
 for one Community -- no custom moderation UI needed yet. Produces one CSV
-row per landmark with cluster membership already computed, plus blank
-columns for a human to fill in. Once reviewing through this spreadsheet
-becomes genuinely painful, this same column list is the specification
-for the custom moderation interface.
+row per landmark with cluster membership AND the latest AI enrichment
+suggestion (if any) already joined in, plus a blank `decision` column.
+Once reviewing through this spreadsheet becomes genuinely painful, this
+same column list is the specification for the custom moderation
+interface.
+
+Fill in `decision` with "approve" or "reject" (leave blank to skip) and
+optionally edit `ai_suggested_name` / `ai_suggested_description` directly
+-- apply_enrichment.py applies whatever is in those columns at the time
+you run it, so editing them IS how you correct an AI suggestion before
+approving it; there's no separate "edit" mode to learn.
 
 Usage:
     python -m osm_importer.review_export --community-id <uuid> --out nashua_review.csv
@@ -21,7 +28,7 @@ FIELDS = [
     "code",
     "name",
     "category",
-    "confidence",
+    "import_confidence",
     "lifecycle_state",
     "lat",
     "lon",
@@ -30,13 +37,38 @@ FIELDS = [
     "raw_tags",
     "nearby_candidate_count",
     "cluster_id",
+    # AI enrichment suggestion (blank if this landmark wasn't enriched, or
+    # wasn't unnamed to begin with -- enrichment only runs on unnamed records):
+    "ai_suggested_name",
+    "ai_suggested_role",
+    "ai_suggested_parent_name",
+    "ai_suggested_description",
+    "ai_confidence",
+    "ai_citations",
     # Blank, for a human to fill in:
     "decision",
-    "revised_name",
     "revised_category",
     "parent_landmark_code",
     "notes",
 ]
+
+
+def latest_successful_suggestions(client, landmark_ids: list[str]) -> dict[str, dict]:
+    if not landmark_ids:
+        return {}
+    runs = (
+        client.table("enrichment_runs")
+        .select("entity_id,response,confidence,created_at")
+        .in_("entity_id", landmark_ids)
+        .not_.is_("response", "null")
+        .order("created_at")
+        .execute()
+        .data
+    )
+    latest: dict[str, dict] = {}
+    for run in runs:
+        latest[run["entity_id"]] = run  # order() means later overwrites earlier
+    return latest
 
 
 def build_rows(community_id: str, cluster_radius_m: float = 40.0) -> list[dict]:
@@ -55,6 +87,7 @@ def build_rows(community_id: str, cluster_radius_m: float = 40.0) -> list[dict]:
         else []
     )
     source_by_landmark = {s["landmark_id"]: s for s in sources}
+    suggestions_by_landmark = latest_successful_suggestions(client, landmark_ids)
 
     clusters = find_clusters(landmarks, cluster_radius_m)
     cluster_id_by_landmark_id: dict[str, int] = {}
@@ -69,12 +102,16 @@ def build_rows(community_id: str, cluster_radius_m: float = 40.0) -> list[dict]:
         source = source_by_landmark.get(l["id"], {})
         raw_payload = dict(source.get("raw_payload") or {})
         raw_payload.pop("_import_batch_id", None)  # noise for a content reviewer, already in landmark_sources if needed
+
+        suggestion_run = suggestions_by_landmark.get(l["id"])
+        suggestion = suggestion_run["response"] if suggestion_run else {}
+
         rows.append(
             {
                 "code": l["code"],
                 "name": l["name"],
                 "category": l["category"],
-                "confidence": l["source_confidence"],
+                "import_confidence": l["source_confidence"],
                 "lifecycle_state": l["lifecycle_state"],
                 "lat": l["lat"],
                 "lon": l["lon"],
@@ -83,15 +120,20 @@ def build_rows(community_id: str, cluster_radius_m: float = 40.0) -> list[dict]:
                 "raw_tags": json.dumps(raw_payload, sort_keys=True),
                 "nearby_candidate_count": nearby_count_by_landmark_id.get(l["id"], 0),
                 "cluster_id": cluster_id_by_landmark_id.get(l["id"], ""),
+                "ai_suggested_name": suggestion.get("suggested_name") or "",
+                "ai_suggested_role": suggestion.get("suggested_role") or "",
+                "ai_suggested_parent_name": suggestion.get("suggested_parent_name") or "",
+                "ai_suggested_description": suggestion.get("description") or "",
+                "ai_confidence": suggestion.get("confidence", ""),
+                "ai_citations": "; ".join(suggestion.get("citations", [])),
                 "decision": "",
-                "revised_name": "",
                 "revised_category": "",
                 "parent_landmark_code": "",
                 "notes": "",
             }
         )
 
-    rows.sort(key=lambda r: (r["cluster_id"] == "", r["cluster_id"], -r["confidence"]))
+    rows.sort(key=lambda r: (r["cluster_id"] == "", r["cluster_id"], -r["import_confidence"]))
     return rows
 
 
