@@ -67,7 +67,7 @@ def fetch_nodes(
         except json.JSONDecodeError as e:
             last_error = e
             if attempt < max_attempts:
-                time.sleep(2 * attempt)
+                time.sleep(15 * attempt)
             continue
         elements = payload.get("elements", [])
         return [el for el in elements if el.get("tags")]
