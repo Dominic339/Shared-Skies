@@ -29,7 +29,7 @@
 -- 5. DATA-DRIVEN CONTENT. One model asset (e.g. `tulip.glb`) is shared by
 --    many catalog entries that differ only by parameters (color, material,
 --    scale) instead of by duplicated model files. See `model_assets`,
---    `item_definitions`, `item_variants`.
+--    `item_definitions`, `asset_variants`.
 --
 -- 6. CONTENT PACKS. Any piece of shippable content (an item definition, a
 --    landmark seed, a spawn rule, an achievement) can be tagged to a
@@ -151,7 +151,7 @@ create trigger trg_feature_flags_updated_at before update on feature_flags
 
 -- One row per reusable 3D/2D asset. Many catalog entries (item_definitions,
 -- waymark designs, landmark structures) point at the same model_asset and
--- differentiate only through item_variants / their own parameter fields.
+-- differentiate only through asset_variants / their own parameter fields.
 create table model_assets (
   id uuid primary key default gen_random_uuid(),
   seq bigserial not null,
@@ -170,6 +170,23 @@ create table model_assets (
 create unique index model_assets_code_idx on model_assets (code);
 create trigger trg_model_assets_updated_at before update on model_assets
   for each row execute function set_updated_at();
+
+-- Named variants of a single model asset (e.g. Tulip -> red/purple/yellow;
+-- Community Center -> coastal/forest/urban). Keyed on model_assets rather
+-- than on item_definitions so this applies to *any* asset — a collectible,
+-- a structure, a coin — not just things a player collects. One model, many
+-- catalog/placement entries.
+create table asset_variants (
+  id uuid primary key default gen_random_uuid(),
+  model_asset_id uuid not null references model_assets (id) on delete cascade,
+  variant_key text not null,   -- e.g. 'color'
+  variant_value text not null, -- e.g. 'red'
+  display_suffix text,         -- e.g. 'Red Tulip' override, optional
+  material_params jsonb not null default '{}', -- shader/material overrides
+  is_default boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (model_asset_id, variant_key, variant_value)
+);
 
 -- ============================================================================
 -- LAYER 1 — CORE WORLD DATA
@@ -358,20 +375,10 @@ create trigger trg_item_definitions_updated_at before update on item_definitions
 
 comment on table item_definitions is
   'e.g. "Tulip" as one row with model_asset_id -> tulip.glb. Color/size/etc. '
-  'variation lives in item_variants, not in duplicated rows or files.';
-
--- e.g. Tulip (Red), Tulip (Purple) — same model_asset, different parameters.
-create table item_variants (
-  id uuid primary key default gen_random_uuid(),
-  item_definition_id uuid not null references item_definitions (id) on delete cascade,
-  variant_key text not null,   -- e.g. 'color'
-  variant_value text not null, -- e.g. 'red'
-  display_suffix text,         -- e.g. 'Red Tulip' override, optional
-  material_params jsonb not null default '{}', -- shader/material overrides
-  is_default boolean not null default false,
-  created_at timestamptz not null default now(),
-  unique (item_definition_id, variant_key, variant_value)
-);
+  'variation lives in asset_variants (keyed on that same model_asset_id), '
+  'not in duplicated rows or files. A variant picked for an item_instance '
+  'should belong to this item''s model_asset_id — enforced at the '
+  'application/import layer, not by a cross-table check constraint.';
 
 alter table spawn_rules
   add constraint spawn_rules_item_definition_fk
@@ -454,7 +461,7 @@ create table item_instances (
   id uuid primary key default gen_random_uuid(),
   owner_wayfinder_id uuid not null references profiles (id) on delete cascade,
   item_definition_id uuid not null references item_definitions (id) on delete restrict,
-  variant_id uuid references item_variants (id) on delete restrict,
+  variant_id uuid references asset_variants (id) on delete restrict,
   acquired_at timestamptz not null default now(),
   acquired_landmark_id uuid references landmarks (id) on delete set null,
   discovered_via text not null default 'landmark_slot' check (discovered_via in (
@@ -602,7 +609,10 @@ create table museum_donations (
 create table accessibility_reports (
   id uuid primary key default gen_random_uuid(),
   landmark_id uuid not null references landmarks (id) on delete cascade,
-  reporter_wayfinder_id uuid not null references profiles (id) on delete cascade,
+  -- Nullable: an import/enrichment pipeline can seed a default accessibility
+  -- report (e.g. from OSM tags) before any wayfinder has ever visited.
+  reporter_wayfinder_id uuid references profiles (id) on delete set null,
+  source text not null default 'player' check (source in ('player', 'pipeline')),
   category text not null check (category in (
     'wheelchair', 'paved_path', 'restroom', 'parking', 'pet_friendly',
     'family_friendly', 'seasonal_closure'
