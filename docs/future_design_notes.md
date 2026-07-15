@@ -5,6 +5,22 @@ intentionally NOT being built yet. Recorded here so the reasoning survives
 until the project reaches the point where it's actually needed -- these are
 not TODOs for right now.
 
+## Lantern-glow proximity indicator
+
+**Status:** Deferred until Dominic has a real signpost model with a
+distinct lantern part to light up -- noted here purely so the idea isn't
+lost, not because there's design work left to do.
+
+Idea: once proximity detection exists (a marker knows "player is within
+range" as a boolean), a lantern hanging on the signpost model lights up
+(emissive material toggle, or a small enabled/disabled point light
+parented to the sign) when the player enters range. The code side of
+this is nearly free once proximity lands -- it's just one more thing a
+marker does with the same in-range signal everything else (visit
+triggering, etc.) already needs, e.g. a `set_in_range(bool)` call on the
+marker. The actual work is entirely on the art side: modeling a lantern
+as its own mesh/material so there's something distinct to toggle.
+
 ## Cluster consolidation (sub-monuments -> one parent Landmark)
 
 **Status:** Deferred until the Landmark/Feature schema exists (see that
