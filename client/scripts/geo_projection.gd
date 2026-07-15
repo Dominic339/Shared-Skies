@@ -24,3 +24,14 @@ static func to_local(lat: float, lng: float) -> Vector3:
 	var dx := (lng - ORIGIN_LNG) * meters_per_degree_lng
 	var dz := -(lat - ORIGIN_LAT) * METERS_PER_DEGREE_LAT
 	return Vector3(dx, 0.0, dz)
+
+
+# Inverse of to_local()'s east/north component, for turning a local
+# movement step (fake-GPS WASD input) back into a lat/lng delta. Shares
+# the same constants as to_local() on purpose -- computing the inverse
+# independently would risk the two silently drifting out of sync.
+static func local_delta_to_lat_lng(east_meters: float, north_meters: float) -> Vector2:
+	var meters_per_degree_lng := METERS_PER_DEGREE_LAT * cos(deg_to_rad(ORIGIN_LAT))
+	var delta_lat := north_meters / METERS_PER_DEGREE_LAT
+	var delta_lng := east_meters / meters_per_degree_lng
+	return Vector2(delta_lat, delta_lng)
