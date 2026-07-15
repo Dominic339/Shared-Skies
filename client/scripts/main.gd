@@ -6,6 +6,9 @@ extends Node3D
 
 func _ready() -> void:
 	print("Shared Skies booted.")
+	if not SupabaseClient.is_ready:
+		await SupabaseClient.authenticated
+	print("Signed in anonymously as %s" % SupabaseClient.user_id)
 
 
 func _process(_delta: float) -> void:
