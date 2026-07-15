@@ -5,6 +5,58 @@ intentionally NOT being built yet. Recorded here so the reasoning survives
 until the project reaches the point where it's actually needed -- these are
 not TODOs for right now.
 
+## Cluster consolidation (sub-monuments -> one parent Landmark)
+
+**Status:** Deferred until the Landmark/Feature schema exists (see that
+section below). Recorded now because it was discovered live while
+curating Nashua's first published test set, not because it's next up.
+
+**The problem:** OSM sometimes tags a single real-world monument as
+several separate points -- e.g. Nashua's Holocaust Memorial imported as
+six standalone named records (`Auschwitz`, `Belzec`, `Chelmno`,
+`Majdanek`, `Sobibor`, `Treblinka`, one per named stone), and its Veterans
+Memorial similarly imported as several individually-named
+markers/plaques. Nothing in the pipeline catches this automatically:
+the AI enrichment pass only ever runs against *unnamed* records (its job
+is "figure out what this unlabeled point is"), and these sub-monument
+points already have names, so they never qualify for enrichment and
+never get an AI-suggested `landmark_feature` note. `clusters.py` does
+spatial-proximity clustering, but it's a reporting tool for human
+review, not an automated fix -- it flags candidates, it doesn't act on
+them. Today, catching this kind of cluster is 100% dependent on a human
+eyeballing the specific query result, which is exactly what happened
+when curating the first published batch -- it worked this time, but only
+because someone was looking right at that data.
+
+**The idea:** once the Landmark/Feature schema exists, build an actual
+consolidation step rather than just a report:
+
+1. Detect a group of nearby records that are really sub-parts of one
+   site -- extending `clusters.py`'s existing proximity detection with
+   thematic similarity (shared category, shared naming pattern, shared
+   OSM relation/way membership where available).
+2. Human review confirms the grouping (same moderation-is-a-layer
+   principle as everything else -- not blind automation, given how much
+   OSM data quality already varies).
+3. Create ONE new parent Landmark for the site as a whole (e.g. "Holocaust
+   Memorial"), with its own real point (cluster centroid, or a
+   designated main entrance/plaza point if one exists).
+4. Archive (never hard-delete, per the schema's existing soft-deletion
+   convention) the individual sub-monument records, with a content_note
+   pointing at the new parent Landmark's code so the consolidation is
+   traceable in history.
+
+**Why delete/archive the sub-points instead of keeping them:** this is
+the piece that ties it to the documentation-bounty system (also
+deferred, see the bounty design discussion). Once that system exists,
+the individual stones/plaques become exactly the kind of content it's
+built for -- a player visits the Holocaust Memorial Landmark and can
+document/photograph a specific stone as a Landmark Feature themselves.
+Pre-populating all of them from OSM import data of uncertain quality
+turns a data-quality liability (a dozen-plus orphaned single-purpose
+points that don't make sense as independent Landmarks) into a
+player-facing discovery opportunity later, instead.
+
 ## Overworld habitat & decoration system
 
 **Status:** Deferred until after the initial Godot vertical slice (map,
