@@ -83,6 +83,23 @@ func get_table(table: String, query: String = "") -> Array:
 	return result if result is Array else []
 
 
+# Authenticated INSERT against a PostgREST table. Returns the inserted
+# row (Prefer: return=representation), or an empty Dictionary on failure
+# -- callers use .is_empty() to check success rather than a separate
+# error path, since RLS rejection and network failure both just come
+# back as "nothing was written."
+func insert_row(table: String, data: Dictionary) -> Dictionary:
+	var headers := [
+		"apikey: " + SUPABASE_ANON_KEY,
+		"Authorization: Bearer " + access_token,
+		"Content-Type: application/json",
+		"Prefer: return=representation",
+	]
+	var url := "%s/rest/v1/%s" % [SUPABASE_URL, table]
+	var result: Variant = await _request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(data))
+	return result[0] if result is Array and result.size() > 0 else {}
+
+
 func _request(url: String, headers: PackedStringArray, method: HTTPClient.Method, body: String = "") -> Variant:
 	var http_request := HTTPRequest.new()
 	add_child(http_request)

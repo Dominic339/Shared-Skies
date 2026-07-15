@@ -7,10 +7,28 @@ var code: String = ""
 var landmark_name: String = ""
 var category: String = ""
 
+var in_range: bool = false
+var visited: bool = false
+
+@onready var in_range_indicator: MeshInstance3D = $InRangeIndicator
+@onready var visited_indicator: MeshInstance3D = $VisitedIndicator
+
 
 func _ready() -> void:
 	input_ray_pickable = true
 	input_event.connect(_on_input_event)
+	in_range_indicator.visible = false
+	visited_indicator.visible = false
+
+
+func set_in_range(value: bool) -> void:
+	in_range = value
+	in_range_indicator.visible = value
+
+
+func set_visited(value: bool) -> void:
+	visited = value
+	visited_indicator.visible = value
 
 
 func _on_input_event(
