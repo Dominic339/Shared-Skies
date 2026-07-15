@@ -3,3 +3,9 @@ __pycache__/
 *.csv
 .env
 importer/real_communities.json
+
+# Godot
+client/.godot/
+client/android/
+client/export_presets.cfg
+*.translation
