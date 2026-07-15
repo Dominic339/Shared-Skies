@@ -52,6 +52,26 @@ tagged with a habitat type) that the decoration system queries by
 location. A Community just happens to overlap whatever zones fall inside
 its boundary.
 
+### Future thought: micro-feature modifiers (not new habitats)
+
+Not for near-term implementation -- recorded because the architecture
+above supports it without restructuring, so it shouldn't get reinvented
+later as if it were a new problem.
+
+Idea: layer subtle *modifiers* on top of a habitat rather than inventing
+new habitat types for every variation. E.g. `Pine Forest + north-facing
+slope` favors moss; `Pine Forest + sunny clearing` favors blueberries;
+`Pebble Beach + high wave exposure` favors driftwood. Two Pine Forest
+zones can feel different without multiplying the habitat catalog.
+
+Why this doesn't require redesigning anything: the per-asset placement
+layer already decides eligibility per cell via a filter over that cell's
+tags (habitat, at minimum). A modifier is just another tag a cell can
+carry, and an asset's eligibility filter becomes `habitat=X AND
+modifier=Y` instead of just `habitat=X`. No new placement mechanism,
+seeding scheme, or rendering path needed -- just richer per-cell tagging
+whenever this actually gets picked up.
+
 ### Data sources for accurate habitat classification
 
 Three real, free, non-crowdsourced datasets, layered together:
