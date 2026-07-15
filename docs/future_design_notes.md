@@ -201,6 +201,16 @@ mangrove/cypress swamp/tropical hammock, Arizona adds Sonoran
 desert/dry wash/saguaro hillside) without changing the placement logic,
 just adding new habitat definitions.
 
+Forest habitats specifically should stay split by type rather than
+collapsing to one generic "forest" -- Pine Forest, Oak Forest, Temperate
+Forest, Rainforest, etc. are each their own habitat definition with their
+own eligible-asset list, the same way Sandy Beach and Pebble Beach are
+kept separate today. Matters most once expansion moves past New England
+into climate zones NE doesn't have at all (temperate rainforest in the
+Pacific Northwest, tropical rainforest further south/abroad) -- the
+habitat catalog should already be shaped to add those as new entries,
+not to retrofit a generic "forest" bucket into finer types later.
+
 **Schema implication:** habitat should NOT be a field on `communities` --
 it needs its own spatial zone layer (polygons or a coarse grid, each
 tagged with a habitat type) that the decoration system queries by
