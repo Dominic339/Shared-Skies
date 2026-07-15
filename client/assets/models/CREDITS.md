@@ -11,3 +11,18 @@ Placeholder for the Landmark marker model, standing in until a custom
 model replaces it. Keep this credit alongside it for as long as the
 asset itself is in the project, including in any build that ships with
 it still in place.
+
+## tree.glb
+
+- Title: tree
+- Author: edy.art (https://sketchfab.com/edy.art)
+- Source: https://sketchfab.com/3d-models/tree-d12155d05b8d4b50bd96742d11e11e2e
+- License: Sketchfab Standard (https://sketchfab.com/licenses)
+
+**Internal testing only.** Unlike signpost.glb, this is NOT Creative
+Commons -- Sketchfab's "Standard" license is personal/non-commercial use
+only and doesn't grant redistribution rights. Fine for prototyping the
+overworld decoration system locally, but must not end up in any build
+that ships publicly. Replace before a real release, not just before
+final art.
+
