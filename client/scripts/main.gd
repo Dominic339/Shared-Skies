@@ -1,6 +1,7 @@
 extends Node3D
 
 const LandmarkMarkerScene := preload("res://scenes/LandmarkMarker.tscn")
+const MOVE_SPEED_METERS_PER_SEC := 8.0
 
 @onready var camera: Camera3D = $Camera3D
 @onready var player_marker: Node3D = $PlayerMarker
@@ -19,9 +20,39 @@ func _ready() -> void:
 	await _load_landmarks()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_handle_movement_input(delta)
 	player_marker.position = GeoProjection.to_local(DevLocation.current_lat, DevLocation.current_lng)
 	camera.update_around(player_marker.global_position)
+
+
+func _handle_movement_input(delta: float) -> void:
+	var input_dir := Vector2.ZERO
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		input_dir.y += 1.0
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		input_dir.y -= 1.0
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		input_dir.x += 1.0
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		input_dir.x -= 1.0
+
+	if input_dir == Vector2.ZERO:
+		return
+	input_dir = input_dir.normalized()
+
+	# Camera-relative, not world-axis-locked: "forward" is always the
+	# direction the camera is currently looking, flattened onto the
+	# ground, regardless of how far the player has dragged it around.
+	# Read straight from the camera's real transform rather than
+	# re-deriving yaw trig by hand -- same lesson as the earlier
+	# hand-authored camera transform bug.
+	var cam_basis := camera.global_transform.basis
+	var forward := -Vector3(cam_basis.z.x, 0.0, cam_basis.z.z).normalized()
+	var right := Vector3(cam_basis.x.x, 0.0, cam_basis.x.z).normalized()
+
+	var movement := (right * input_dir.x + forward * input_dir.y) * MOVE_SPEED_METERS_PER_SEC * delta
+	DevLocation.move(movement.x, -movement.z)
 
 
 func _load_landmarks() -> void:
