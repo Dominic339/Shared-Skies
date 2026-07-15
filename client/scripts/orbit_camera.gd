@@ -43,10 +43,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _apply_drag(relative: Vector2) -> void:
 	yaw_degrees -= relative.x * drag_degrees_per_pixel
-	# Dragging up tilts the camera further overhead (higher pitch);
-	# dragging down brings it back toward eye level.
+	# Dragging down tilts the camera further overhead (higher pitch);
+	# dragging up brings it back toward eye level.
 	pitch_degrees = clampf(
-		pitch_degrees - relative.y * drag_degrees_per_pixel, MIN_PITCH_DEGREES, MAX_PITCH_DEGREES
+		pitch_degrees + relative.y * drag_degrees_per_pixel, MIN_PITCH_DEGREES, MAX_PITCH_DEGREES
 	)
 
 
