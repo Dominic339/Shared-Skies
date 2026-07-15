@@ -1,6 +1,6 @@
 extends Node3D
 
-@onready var camera_rig: Node3D = $CameraRig
+@onready var camera: Camera3D = $Camera3D
 @onready var player_marker: Node3D = $PlayerMarker
 
 
@@ -13,4 +13,4 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	player_marker.position = GeoProjection.to_local(DevLocation.current_lat, DevLocation.current_lng)
-	camera_rig.global_position = player_marker.global_position
+	camera.update_around(player_marker.global_position)
