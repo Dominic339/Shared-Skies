@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/dev_location_ui.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/orbit_camera.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/landmark_display_ui.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/map_tile_loader.gd" id="5"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(200, 200)
@@ -41,6 +42,9 @@ mesh = SubResource("SphereMesh_1")
 surface_material_override/0 = SubResource("StandardMaterial3D_2")
 
 [node name="LandmarkMarkers" type="Node3D" parent="."]
+
+[node name="MapTiles" type="Node3D" parent="."]
+script = ExtResource("5")
 
 [node name="DevUI" type="CanvasLayer" parent="."]
 script = ExtResource("2")
