@@ -166,13 +166,12 @@ func _spawn_card_holders(slot_count: int) -> void:
 		# applied here -- it's parented as-is.
 		var card := ProfileCardScene.instantiate()
 		holder.add_child(card)
-		# The holder turned out to be a hollow pocket (open-top scoop), not
-		# the solid block its bounding box suggested -- a real pocket is
-		# deeper than that box, so the card's own natural offset from its
-		# origin (~0.009m) isn't enough to clear the front lip. This nudges
-		# it further out along the same axis; still an estimate, check
-		# visually whether it needs more, less, or the opposite direction.
-		card.position = Vector3(0.015, 0, 0)
+		# The holder is a hollow pocket (open-top scoop). Forward was the
+		# wrong direction -- confirmed by testing, not guessed this time --
+		# so this goes the other way along the same axis instead. Still an
+		# estimate on magnitude; check visually whether it needs more or
+		# less.
+		card.position = Vector3(-0.015, 0, 0)
 
 
 func set_in_range(value: bool) -> void:
