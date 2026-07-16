@@ -1,6 +1,7 @@
+class_name LandmarkMarker
 extends Area3D
 
-signal tapped(marker: Area3D)
+signal tapped(marker: LandmarkMarker)
 
 var landmark_id: String = ""
 var code: String = ""

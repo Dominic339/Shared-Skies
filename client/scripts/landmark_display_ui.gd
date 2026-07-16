@@ -11,7 +11,7 @@ func _ready() -> void:
 	hide()
 
 
-func show_landmark(marker: Area3D) -> void:
+func show_landmark(marker: LandmarkMarker) -> void:
 	name_label.text = marker.landmark_name
 	category_label.text = "Category: %s" % marker.category
 	code_label.text = marker.code

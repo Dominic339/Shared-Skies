@@ -61,7 +61,7 @@ func _handle_movement_input(delta: float) -> void:
 
 
 func _check_proximity() -> void:
-	for marker: Area3D in landmark_markers.get_children():
+	for marker: LandmarkMarker in landmark_markers.get_children():
 		var distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(distance <= PROXIMITY_RADIUS_METERS)
 
@@ -73,7 +73,7 @@ func _load_landmarks() -> void:
 	print("Fetched %d published landmark(s)." % rows.size())
 
 	for row: Dictionary in rows:
-		var marker: Area3D = LandmarkMarkerScene.instantiate()
+		var marker: LandmarkMarker = LandmarkMarkerScene.instantiate()
 		landmark_markers.add_child(marker)
 		marker.landmark_id = row.get("id", "")
 		marker.code = row.get("code", "")
@@ -89,19 +89,19 @@ func _load_existing_visits() -> void:
 		"visits", "select=landmark_id&wayfinder_id=eq.%s" % SupabaseClient.user_id
 	)
 	for row: Dictionary in rows:
-		var marker: Area3D = markers_by_landmark_id.get(row.get("landmark_id", ""))
+		var marker: LandmarkMarker = markers_by_landmark_id.get(row.get("landmark_id", ""))
 		if marker:
 			marker.set_visited(true)
 	print("%d Landmark(s) already visited." % rows.size())
 
 
-func _on_landmark_marker_tapped(marker: Area3D) -> void:
+func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 	landmark_display.show_landmark(marker)
 	if marker.in_range:
 		await _record_visit(marker)
 
 
-func _record_visit(marker: Area3D) -> void:
+func _record_visit(marker: LandmarkMarker) -> void:
 	var is_first := not marker.visited
 	marker.set_visited(true)  # optimistic -- avoids double-recording if tapped again before this resolves
 
