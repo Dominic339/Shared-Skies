@@ -55,21 +55,17 @@ const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
 const ProfileCardScene := preload("res://assets/models/profile_card.glb")
 
-# The card model was authored lying flat instead of standing upright.
-# Parsing the actual glb: its own baked node rotation is ~92 deg about
-# local X, which (since rotating about X leaves X itself unchanged) keeps
-# the card's thin/face-normal axis on local X but swaps its real-world
-# dimensions so the ~6.9cm "height" ends up along local Z instead of Y --
-# that's what "lying flat" looks like. Rotating back by -90 deg about that
-# same local X (the card's OWN current axis, not the parent's) swaps
-# height back onto Y. This must be applied via rotate_object_local(), not
-# by adding to rotation_degrees -- Euler-angle addition doesn't compose
-# correctly with an existing non-trivial rotation (it's not equivalent to
-# "rotate this many more degrees around the object's own axis"), which is
-# why the first attempt came out edge-on instead of upright. Since the
-# card is a direct child of its holder, it already inherits the holder's
-# own forward lean through the scene hierarchy once this is right.
-const CARD_UPRIGHT_CORRECTION_DEGREES := -90.0
+# The card model's SCALE alone already assigns the right real-world
+# proportions (thin on X, ~6.9cm tall on Y, ~4.2cm wide on Z) -- with zero
+# rotation it would already stand upright correctly. The "lying flat"
+# problem is an accidental ~92 deg rotation baked into the node on top of
+# that already-correct scale (most likely from tipping the object over in
+# Blender at some point), not something that needs a compensating
+# rotation. Discarding it (rotation = zero) is simpler and more reliable
+# than composing a counter-rotation on top of an arbitrary baked value.
+# Zero LOCAL rotation also means "same orientation as its parent", so as
+# a direct child of its holder, the card automatically matches the
+# holder's own forward lean with no extra rotation needed at all.
 
 # Card/holder models are each authored at their own local origin (0,0,0)
 # in their own files -- they don't carry a baked position relative to
@@ -184,12 +180,7 @@ func _spawn_card_holders(slot_count: int) -> void:
 		# holder's groove rather than clip through it.
 		var card := ProfileCardScene.instantiate()
 		holder.add_child(card)
-		card.rotate_object_local(Vector3.RIGHT, deg_to_rad(CARD_UPRIGHT_CORRECTION_DEGREES))
-		# Reverted: shifting by the full CARD_CENTERING_OFFSET_METERS moved
-		# the card's mesh to sit centered inside the holder's own solid
-		# body instead of on its face, hiding it entirely. Back to no
-		# offset (the "sticking out" state) until we know which direction
-		# and how far it actually needs to move.
+		card.rotation = Vector3.ZERO
 
 
 func set_in_range(value: bool) -> void:
