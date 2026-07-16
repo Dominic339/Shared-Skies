@@ -50,18 +50,21 @@ shape = SubResource("BoxShape3D_1")
 
 [node name="InRangeIndicator" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0.003)
+cast_shadow = 0
 mesh = SubResource("TorusMesh_1")
 surface_material_override/0 = SubResource("StandardMaterial3D_InRange")
 visible = false
 
 [node name="VisitedIndicator" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 2.6, 0.873)
+cast_shadow = 0
 mesh = SubResource("CylinderMesh_Visited")
 surface_material_override/0 = SubResource("StandardMaterial3D_Visited")
 visible = false
 
 [node name="CategoryTag" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 2.6, -0.827)
+cast_shadow = 0
 mesh = SubResource("CylinderMesh_Category")
 surface_material_override/0 = SubResource("StandardMaterial3D_Category")
 

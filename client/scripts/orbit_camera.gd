@@ -7,7 +7,7 @@ extends Camera3D
 # (yaw, pitch, zoom) rather than relying on a hand-authored transform, so
 # there's no way for the camera to end up aimed somewhere wrong.
 
-@export var min_zoom: float = 6.0
+@export var min_zoom: float = 4.0  # lowered so the sign-focus camera can sit closer than free-roam ever needed before
 @export var max_zoom: float = 200.0  # real street geometry spans hundreds of meters, not ~20
 @export var drag_degrees_per_pixel: float = 0.3
 @export var zoom_step: float = 10.0
