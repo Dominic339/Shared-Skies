@@ -3,7 +3,13 @@ extends Node3D
 const LandmarkMarkerScene := preload("res://scenes/LandmarkMarker.tscn")
 const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real gameplay uses actual device GPS, not this
 const PROXIMITY_RADIUS_METERS := 25.0
-const FOCUS_ZOOM := 15.0  # closer view when a sign is tapped, per the sign-first interaction design
+const FOCUS_ZOOM := 7.0  # close, near min_zoom -- a head-on "reading the board" distance, not a map-scale one
+const FOCUS_PITCH_DEGREES := 25.0  # level enough to look at the board face, not down at its base
+# Board's face sits roughly at this height above the marker's (ground-level)
+# origin -- orbiting around the ground would tilt the framing toward the
+# sign's base instead of centering the board itself. Matches the board's
+# vertical center per its CollisionShape3D (position.y = 1.27).
+const FOCUS_TARGET_HEIGHT_METERS := 1.3
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ground: Node3D = $Ground
@@ -14,6 +20,7 @@ const FOCUS_ZOOM := 15.0  # closer view when a sign is tapped, per the sign-firs
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
 var _zoom_before_focus: float = 50.0
+var _pitch_before_focus: float = 55.0
 
 
 func _ready() -> void:
@@ -35,7 +42,11 @@ func _process(delta: float) -> void:
 	# The camera follows whichever Landmark is focused (tapped sign), or
 	# the player otherwise -- this is what makes "camera moves closer
 	# when clicked" work without a separate cinematic system.
-	var camera_target := focused_marker.global_position if focused_marker else player_marker.global_position
+	var camera_target := (
+		focused_marker.global_position + Vector3(0, FOCUS_TARGET_HEIGHT_METERS, 0)
+		if focused_marker
+		else player_marker.global_position
+	)
 	camera.update_around(camera_target)
 	# Ground is a single static placeholder plane, not per-tile geometry
 	# like roads/water -- recenter it on the player each frame so its
@@ -121,12 +132,14 @@ func _load_existing_visits() -> void:
 func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 	if focused_marker == null:
 		_zoom_before_focus = camera.zoom
+		_pitch_before_focus = camera.pitch_degrees
 	elif focused_marker != marker:
 		focused_marker.set_selected(false)
 
 	focused_marker = marker
 	marker.set_selected(true)
 	camera.animate_zoom_to(FOCUS_ZOOM)
+	camera.animate_pitch_to(FOCUS_PITCH_DEGREES)
 
 	landmark_display.show_landmark(marker, camera)
 	if marker.in_range:
@@ -138,6 +151,7 @@ func _on_landmark_display_closed() -> void:
 		focused_marker.set_selected(false)
 	focused_marker = null
 	camera.animate_zoom_to(_zoom_before_focus)
+	camera.animate_pitch_to(_pitch_before_focus)
 
 
 func _record_visit(marker: LandmarkMarker) -> void:

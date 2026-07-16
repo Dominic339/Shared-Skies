@@ -58,6 +58,17 @@ func animate_zoom_to(target_zoom: float, duration: float = 0.4) -> void:
 	tween.tween_property(self, "zoom", clampf(target_zoom, min_zoom, max_zoom), duration).set_trans(Tween.TRANS_SINE)
 
 
+# Companion to animate_zoom_to(), used to bring the camera down to a more
+# level, head-on angle when focusing a sign -- the free-roam default pitch
+# (55 deg, chosen for a good overhead map view) looks down at the ground
+# too steeply for a nice "reading the board" framing up close.
+func animate_pitch_to(target_pitch_degrees: float, duration: float = 0.4) -> void:
+	var tween := create_tween()
+	tween.tween_property(
+		self, "pitch_degrees", clampf(target_pitch_degrees, MIN_PITCH_DEGREES, MAX_PITCH_DEGREES), duration
+	).set_trans(Tween.TRANS_SINE)
+
+
 func update_around(target_global_position: Vector3) -> void:
 	var pitch_rad := deg_to_rad(pitch_degrees)
 	var yaw_rad := deg_to_rad(yaw_degrees)
