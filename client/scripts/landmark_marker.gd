@@ -210,6 +210,17 @@ const TURN_SPEED_DEGREES_PER_SEC := 90.0
 const FOCUSED_TURN_SPEED_DEGREES_PER_SEC := 720.0
 
 
+# Shared by face_camera() and snap_to_camera() -- returns null if the
+# camera is directly overhead (no meaningful yaw to face).
+func _target_yaw(camera_global_position: Vector3) -> Variant:
+	var target := camera_global_position
+	target.y = global_position.y
+	if target.distance_to(global_position) < 0.01:
+		return null
+	var to_target := target - global_position
+	return atan2(to_target.x, to_target.z) + deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES)
+
+
 # Rotates the whole marker (board + collision + indicators together, so
 # they stay aligned) around the vertical axis only -- never tilts up/
 # down -- to keep the sign's readable face toward the camera (not the
@@ -218,17 +229,24 @@ const FOCUSED_TURN_SPEED_DEGREES_PER_SEC := 720.0
 # side it's viewed from. Turns at a limited speed instead of snapping
 # instantly.
 func face_camera(camera_global_position: Vector3, delta: float) -> void:
-	var target := camera_global_position
-	target.y = global_position.y
-	if target.distance_to(global_position) < 0.01:
+	var target_yaw: Variant = _target_yaw(camera_global_position)
+	if target_yaw == null:
 		return
-
-	var to_target := target - global_position
-	var target_yaw := atan2(to_target.x, to_target.z) + deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES)
 	var turn_speed := FOCUSED_TURN_SPEED_DEGREES_PER_SEC if selected else TURN_SPEED_DEGREES_PER_SEC
 	var max_step := deg_to_rad(turn_speed) * delta
 	var diff := wrapf(target_yaw - rotation.y, -PI, PI)
 	rotation.y += clampf(diff, -max_step, max_step)
+
+
+# Instantly aligns to face the camera, bypassing the turn-speed limit --
+# used at the moment a sign is tapped so the focused view always shows the
+# exact same framing regardless of how far the ambient face_camera()
+# tracking had gotten before the tap (which depended on the player's
+# approach angle and was a real source of inconsistent focus framing).
+func snap_to_camera(camera_global_position: Vector3) -> void:
+	var target_yaw: Variant = _target_yaw(camera_global_position)
+	if target_yaw != null:
+		rotation.y = target_yaw
 
 
 func _on_input_event(
