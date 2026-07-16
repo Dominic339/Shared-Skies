@@ -166,12 +166,11 @@ func _spawn_card_holders(slot_count: int) -> void:
 		# applied here -- it's parented as-is.
 		var card := ProfileCardScene.instantiate()
 		holder.add_child(card)
-		# The holder is a hollow pocket (open-top scoop). Forward was the
-		# wrong direction -- confirmed by testing, not guessed this time --
-		# so this goes the other way along the same axis instead. Still an
-		# estimate on magnitude; check visually whether it needs more or
-		# less.
-		card.position = Vector3(-0.015, 0, 0)
+		# The holder is a hollow pocket (open-top scoop), tilted forward.
+		# Dialing in by feel now that direction is confirmed: less
+		# backward than the last attempt, plus raising it so more of the
+		# card peeks up out of the pocket.
+		card.position = Vector3(-0.008, 0.02, 0)
 
 
 func set_in_range(value: bool) -> void:
