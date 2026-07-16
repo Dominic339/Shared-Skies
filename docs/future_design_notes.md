@@ -110,21 +110,48 @@ feeds both systems. NLCD/NWI (see that section) remain useful for
 refining accuracy later, but are no longer a hard prerequisite -- this
 OSM-derived data can bootstrap habitat zones directly.
 
-## Lantern-glow proximity indicator
+## Kiosk-style Landmark sign (final design)
 
-**Status:** Deferred until Dominic has a real signpost model with a
-distinct lantern part to light up -- noted here purely so the idea isn't
-lost, not because there's design work left to do.
+**Status:** Deferred until Dominic builds the real kiosk model --
+recorded now because the design itself (layout + interaction) is
+decided, even though nothing here is built. The current placeholder
+(signpost.glb + floating name label + colored category disc + ring/disc
+indicators) is explicitly NOT this -- it's a stand-in proving the
+interaction loop (tap -> focus -> info), not a preview of the final look.
 
-Idea: once proximity detection exists (a marker knows "player is within
-range" as a boolean), a lantern hanging on the signpost model lights up
-(emissive material toggle, or a small enabled/disabled point light
-parented to the sign) when the player enters range. The code side of
-this is nearly free once proximity lands -- it's just one more thing a
-marker does with the same in-range signal everything else (visit
-triggering, etc.) already needs, e.g. a `set_in_range(bool)` call on the
-marker. The actual work is entirely on the art side: modeling a lantern
-as its own mesh/material so there's something distinct to toggle.
+**Reference:** a real wood-frame trailhead kiosk (peaked shingled roof,
+large board mounted between two posts) -- see the reference photo
+shared in discussion (a Trails of James River Park example). Layout:
+
+- Landmark photo centered on the board.
+- Name in a ribbon banner across the top.
+- Description/details panel on the left.
+- Sub-monument bubbles scattered around the center photo, each
+  clickable for more info -- this is the concrete UI answer to the
+  Cluster Consolidation idea below: once a parent Landmark can have
+  child Features, its sign is how they'd actually be presented, one
+  bubble per Feature.
+- Player card holder mounted to the right support post.
+- Stationery dispenser mounted underneath the card holder.
+
+**In-range indicator:** a lantern mounted on the kiosk that lights up
+(emissive toggle, or a small point light) as the player approaches --
+diegetic (a real object on the sign), reads clearly, and doesn't
+compete visually with the board's own content the way a floating ring
+would. The code side is nearly free once proximity exists: it's the
+same `set_in_range(bool)` call every marker already makes, just
+retargeted from the placeholder ring to the lantern once the model
+exists.
+
+**Visited indicator:** rather than invent a new visual language, extend
+one the game already has -- a wax-seal/stamp mark appearing on a corner
+of the board, echoing the Community stamp collection mechanic
+(`stamp_collection`) that already exists in the schema. Reads as a
+passport being stamped, not a UI checkbox. Optional complementary
+touch: let the center photo start slightly desaturated ("undocumented")
+and shift to full color once visited, reinforcing "you're the one
+bringing this place to life" -- nice-to-have, not required. Same
+`set_visited(bool)` call already in place, just retargeted.
 
 ## Cluster consolidation (sub-monuments -> one parent Landmark)
 
