@@ -27,6 +27,8 @@ var zoom: float = 50.0
 var locked: bool = false
 
 var _dragging: bool = false
+var _zoom_tween: Tween = null
+var _pitch_tween: Tween = null
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -58,10 +60,16 @@ func _apply_drag(relative: Vector2) -> void:
 
 # Smoothly animates zoom to a new value (e.g. moving closer to focus on
 # a tapped Landmark sign) without touching yaw/pitch or the orbit target
-# itself -- callers decide what update_around() is centered on.
+# itself -- callers decide what update_around() is centered on. Kills any
+# previous zoom tween first -- tapping a new sign (or the same one again)
+# before the last animation finished used to leave two tweens fighting
+# over the same `zoom` property, settling somewhere inconsistent
+# depending on timing rather than always landing on target_zoom.
 func animate_zoom_to(target_zoom: float, duration: float = 0.4) -> void:
-	var tween := create_tween()
-	tween.tween_property(self, "zoom", clampf(target_zoom, min_zoom, max_zoom), duration).set_trans(Tween.TRANS_SINE)
+	if _zoom_tween and _zoom_tween.is_valid():
+		_zoom_tween.kill()
+	_zoom_tween = create_tween()
+	_zoom_tween.tween_property(self, "zoom", clampf(target_zoom, min_zoom, max_zoom), duration).set_trans(Tween.TRANS_SINE)
 
 
 # Companion to animate_zoom_to(), used to bring the camera down to a more
@@ -73,8 +81,10 @@ func animate_zoom_to(target_zoom: float, duration: float = 0.4) -> void:
 # programmatic focus view is a separate, controlled camera state that can
 # go all the way to a truly flat 0 deg without the same concern.
 func animate_pitch_to(target_pitch_degrees: float, duration: float = 0.4) -> void:
-	var tween := create_tween()
-	tween.tween_property(
+	if _pitch_tween and _pitch_tween.is_valid():
+		_pitch_tween.kill()
+	_pitch_tween = create_tween()
+	_pitch_tween.tween_property(
 		self, "pitch_degrees", clampf(target_pitch_degrees, 0.0, 90.0), duration
 	).set_trans(Tween.TRANS_SINE)
 
