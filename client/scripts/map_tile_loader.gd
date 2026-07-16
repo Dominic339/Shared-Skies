@@ -11,7 +11,7 @@ const ZOOM := 14
 const LOAD_RADIUS := 1  # 3x3 grid around the player's current tile
 const TILE_DIR := "res://assets/map_tiles/nashua/"
 
-const ROAD_WIDTH_METERS := 2.0
+const ROAD_WIDTH_METERS := 6.0  # exaggerated for legibility at map-view zoom, not literal road width
 const ROAD_Y := 0.05
 const WATER_Y := 0.02
 

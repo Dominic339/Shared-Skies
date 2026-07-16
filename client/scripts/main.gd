@@ -1,7 +1,7 @@
 extends Node3D
 
 const LandmarkMarkerScene := preload("res://scenes/LandmarkMarker.tscn")
-const MOVE_SPEED_METERS_PER_SEC := 8.0
+const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real gameplay uses actual device GPS, not this
 const PROXIMITY_RADIUS_METERS := 25.0
 
 @onready var camera: Camera3D = $Camera3D
