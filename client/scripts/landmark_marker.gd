@@ -55,16 +55,21 @@ const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
 const ProfileCardScene := preload("res://assets/models/profile_card.glb")
 
-# The card model was authored lying flat instead of standing upright, so
-# it needs an extra tip-up rotation applied on top of whatever it's
-# instantiated with. This is layered onto the card's own local rotation,
-# not a replacement of it -- and since the card is a direct child of its
-# holder, it already inherits the holder's own forward lean through the
-# scene hierarchy, so no separate tilt-matching is needed once this makes
-# it stand up correctly. Starting guess, unverified without seeing it
-# rendered -- if it's still flat, upside down, or leaning the wrong way,
-# this is the one value to change (try swapping the axis or negating it).
-const CARD_UPRIGHT_CORRECTION_DEGREES := Vector3(90.0, 0.0, 0.0)
+# The card model was authored lying flat instead of standing upright.
+# Parsing the actual glb: its own baked node rotation is ~92 deg about
+# local X, which (since rotating about X leaves X itself unchanged) keeps
+# the card's thin/face-normal axis on local X but swaps its real-world
+# dimensions so the ~6.9cm "height" ends up along local Z instead of Y --
+# that's what "lying flat" looks like. Rotating back by -90 deg about that
+# same local X (the card's OWN current axis, not the parent's) swaps
+# height back onto Y. This must be applied via rotate_object_local(), not
+# by adding to rotation_degrees -- Euler-angle addition doesn't compose
+# correctly with an existing non-trivial rotation (it's not equivalent to
+# "rotate this many more degrees around the object's own axis"), which is
+# why the first attempt came out edge-on instead of upright. Since the
+# card is a direct child of its holder, it already inherits the holder's
+# own forward lean through the scene hierarchy once this is right.
+const CARD_UPRIGHT_CORRECTION_DEGREES := -90.0
 
 # Card/holder models are each authored at their own local origin (0,0,0)
 # in their own files -- they don't carry a baked position relative to
@@ -179,7 +184,7 @@ func _spawn_card_holders(slot_count: int) -> void:
 		# holder's groove rather than clip through it.
 		var card := ProfileCardScene.instantiate()
 		holder.add_child(card)
-		card.rotation_degrees += CARD_UPRIGHT_CORRECTION_DEGREES
+		card.rotate_object_local(Vector3.RIGHT, deg_to_rad(CARD_UPRIGHT_CORRECTION_DEGREES))
 
 
 func set_in_range(value: bool) -> void:
