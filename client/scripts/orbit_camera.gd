@@ -22,10 +22,16 @@ var yaw_degrees: float = 0.0
 var pitch_degrees: float = 55.0
 var zoom: float = 50.0
 
+# Set while a sign is focused -- the focus view is meant to be one fixed,
+# deliberately-framed shot, not something the player can drag/zoom out of.
+var locked: bool = false
+
 var _dragging: bool = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if locked:
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_dragging = event.pressed

@@ -147,6 +147,7 @@ func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 
 	focused_marker = marker
 	marker.set_selected(true)
+	camera.locked = true
 	camera.animate_zoom_to(FOCUS_ZOOM)
 	camera.animate_pitch_to(FOCUS_PITCH_DEGREES)
 
@@ -159,6 +160,7 @@ func _on_landmark_display_closed() -> void:
 	if focused_marker:
 		focused_marker.set_selected(false)
 	focused_marker = null
+	camera.locked = false
 	camera.animate_zoom_to(_zoom_before_focus)
 	camera.animate_pitch_to(_pitch_before_focus)
 
