@@ -53,6 +53,7 @@ var selected: bool = false
 
 const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
+const ProfileCardScene := preload("res://assets/models/profile_card.glb")
 
 # Card/holder models are each authored at their own local origin (0,0,0)
 # in their own files -- they don't carry a baked position relative to
@@ -156,6 +157,17 @@ func _spawn_card_holders(slot_count: int) -> void:
 		var holder := ProfileCardHolderScene.instantiate()
 		card_holders.add_child(holder)
 		holder.position = FIRST_SLOT_POSITION + Vector3(0, SLOT_SPACING * i, 0)
+		# TEMPORARY fit test -- spawns a card in every holder just to check
+		# they sit correctly, not real gameplay (that only shows a card
+		# once a player has actually left one, which isn't built yet).
+		# Card and holder are each authored at their own local origin
+		# (0,0,0) in their own files, not positioned relative to each
+		# other, so this assumes a card sits flush with the holder's own
+		# origin when parented to it -- check visually once in Godot, this
+		# may need a small offset/rotation to actually nestle into the
+		# holder's groove rather than clip through it.
+		var card := ProfileCardScene.instantiate()
+		holder.add_child(card)
 
 
 func set_in_range(value: bool) -> void:
