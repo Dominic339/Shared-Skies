@@ -98,7 +98,12 @@ func _check_proximity(delta: float) -> void:
 	for marker: LandmarkMarker in landmark_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
-		marker.face_camera(camera.global_position, delta)
+		# The focused sign holds still instead of continuing to chase the
+		# camera -- otherwise dragging the camera around a focused sign to
+		# inspect it from another angle is impossible, since it just spins
+		# to face wherever you moved to.
+		if marker != focused_marker:
+			marker.face_camera(camera.global_position, delta)
 
 
 func _load_landmarks() -> void:
