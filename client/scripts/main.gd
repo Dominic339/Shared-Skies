@@ -32,6 +32,8 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var player_marker: Node3D = $PlayerMarker
 @onready var landmark_markers: Node3D = $LandmarkMarkers
 @onready var landmark_display: CanvasLayer = $LandmarkDisplay
+@onready var atlas_button: Button = $AtlasButton/Button
+@onready var atlas_ui: CanvasLayer = $AtlasUI
 
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
@@ -44,6 +46,7 @@ func _ready() -> void:
 	print("Shared Skies booted.")
 	get_viewport().physics_object_picking = true
 	landmark_display.closed.connect(_on_landmark_display_closed)
+	atlas_button.pressed.connect(_on_atlas_button_pressed)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -176,6 +179,10 @@ func _on_landmark_display_closed() -> void:
 	camera.yaw_degrees = _yaw_before_focus
 	camera.animate_zoom_to(_zoom_before_focus)
 	camera.animate_pitch_to(_pitch_before_focus)
+
+
+func _on_atlas_button_pressed() -> void:
+	atlas_ui.show_atlas()
 
 
 func _record_visit(marker: LandmarkMarker) -> void:
