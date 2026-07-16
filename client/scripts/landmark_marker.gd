@@ -35,7 +35,7 @@ var selected: bool = false
 @onready var visited_indicator: MeshInstance3D = $VisitedIndicator
 @onready var category_tag: MeshInstance3D = $CategoryTag
 @onready var name_label: Label3D = $NameLabel3D
-@onready var signpost_model: Node3D = $SignpostModel
+@onready var sign_model: Node3D = $SignModel
 
 const ToonShader := preload("res://shaders/toon.gdshader")
 
@@ -45,24 +45,29 @@ func _ready() -> void:
 	input_event.connect(_on_input_event)
 	in_range_indicator.visible = false
 	visited_indicator.visible = false
-	_apply_toon_demo_material(signpost_model)
+	_apply_toon_demo_material(sign_model)
 
 
-# TEMPORARY: demos the toon/cel-shading shader on the placeholder
-# signpost so it's visible in-game before the real kiosk model exists.
-# Remove this once real materials replace it -- the real sign should
-# get its toon material set up deliberately (e.g. via setup()), not
-# forced onto every mesh underneath it like this.
+# TEMPORARY: applies toon/cel-shading on top of the sign model's own
+# authored colors (read from each surface's original imported material)
+# rather than forcing one hardcoded tint -- preserves whatever Dominic
+# actually set up per material slot in Blender (e.g. the board's dark
+# wood body vs. its lighter trim color) while still adding the banded
+# lighting response. Revisit once the sign's real materials/textures are
+# finalized -- this is a reasonable default, not the final art pass.
 func _apply_toon_demo_material(node: Node) -> void:
 	if node is MeshInstance3D:
 		var mesh_instance := node as MeshInstance3D
-		var material := ShaderMaterial.new()
-		material.shader = ToonShader
-		material.set_shader_parameter("albedo_tint", Color(0.4, 0.27, 0.15))
-		material.set_shader_parameter("use_vertex_color", false)
-		material.set_shader_parameter("light_bands", 3)
-		material.set_shader_parameter("band_softness", 0.15)
 		for surface_idx in mesh_instance.mesh.get_surface_count():
+			var original := mesh_instance.mesh.surface_get_material(surface_idx) as StandardMaterial3D
+			var material := ShaderMaterial.new()
+			material.shader = ToonShader
+			material.set_shader_parameter(
+				"albedo_tint", original.albedo_color if original else Color(0.4, 0.27, 0.15)
+			)
+			material.set_shader_parameter("use_vertex_color", false)
+			material.set_shader_parameter("light_bands", 3)
+			material.set_shader_parameter("band_softness", 0.15)
 			mesh_instance.set_surface_override_material(surface_idx, material)
 	for child in node.get_children():
 		_apply_toon_demo_material(child)
