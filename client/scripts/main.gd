@@ -4,7 +4,7 @@ const LandmarkMarkerScene := preload("res://scenes/LandmarkMarker.tscn")
 const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real gameplay uses actual device GPS, not this
 const PROXIMITY_RADIUS_METERS := 25.0
 const FOCUS_ZOOM := 5.5  # tighter than free-roam ever needs -- fills the frame with the ~4.5m (2x-scaled) sign structure
-const FOCUS_PITCH_DEGREES := 16.0  # near orbit_camera's MIN_PITCH_DEGREES floor -- a low, standing-in-front-of-it angle rather than looking down on it
+const FOCUS_PITCH_DEGREES := 0.0  # fully level -- flat-on with the board, not looking down at it from above
 # Board's face sits roughly at this height above the marker's (ground-level)
 # origin -- orbiting around the ground would tilt the framing toward the
 # sign's base instead of centering the board itself. Matches the board's
