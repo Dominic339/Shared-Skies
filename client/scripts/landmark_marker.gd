@@ -64,7 +64,15 @@ const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder
 # estimate, derived from the card's own ~6.9cm height plus a small gap,
 # since no second reference point was available to measure spacing
 # directly. Check both once visible in Godot.
-const FIRST_SLOT_POSITION := Vector3(0.04, 1.7999, -2.2614)
+# Z shifted by +1.173 along with every other child in LandmarkMarker.tscn
+# (SignModel included) -- the sign model's own local origin turned out to
+# sit at its edge (mesh Z spans -2.301..-0.045, center -1.173), not its
+# visual center, which is what made the marker rotate like a door hinge
+# instead of spinning in place, and made camera-focus/panel-anchor code
+# aim at that edge instead of the board. Shifting everything the same
+# amount re-centers the origin on the sign without moving anything
+# relative to the model itself.
+const FIRST_SLOT_POSITION := Vector3(0.04, 1.7999, -1.0884)
 const SLOT_SPACING := 0.09
 
 # Real measured height of the sign structure (parsed directly from
