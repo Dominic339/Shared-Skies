@@ -50,6 +50,14 @@ func _apply_drag(relative: Vector2) -> void:
 	)
 
 
+# Smoothly animates zoom to a new value (e.g. moving closer to focus on
+# a tapped Landmark sign) without touching yaw/pitch or the orbit target
+# itself -- callers decide what update_around() is centered on.
+func animate_zoom_to(target_zoom: float, duration: float = 0.4) -> void:
+	var tween := create_tween()
+	tween.tween_property(self, "zoom", clampf(target_zoom, min_zoom, max_zoom), duration).set_trans(Tween.TRANS_SINE)
+
+
 func update_around(target_global_position: Vector3) -> void:
 	var pitch_rad := deg_to_rad(pitch_degrees)
 	var yaw_rad := deg_to_rad(yaw_degrees)

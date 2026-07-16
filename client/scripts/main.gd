@@ -3,6 +3,7 @@ extends Node3D
 const LandmarkMarkerScene := preload("res://scenes/LandmarkMarker.tscn")
 const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real gameplay uses actual device GPS, not this
 const PROXIMITY_RADIUS_METERS := 25.0
+const FOCUS_ZOOM := 15.0  # closer view when a sign is tapped, per the sign-first interaction design
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ground: Node3D = $Ground
@@ -11,11 +12,14 @@ const PROXIMITY_RADIUS_METERS := 25.0
 @onready var landmark_display: CanvasLayer = $LandmarkDisplay
 
 var markers_by_landmark_id: Dictionary = {}
+var focused_marker: LandmarkMarker = null
+var _zoom_before_focus: float = 50.0
 
 
 func _ready() -> void:
 	print("Shared Skies booted.")
 	get_viewport().physics_object_picking = true
+	landmark_display.closed.connect(_on_landmark_display_closed)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -28,7 +32,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_handle_movement_input(delta)
 	player_marker.position = GeoProjection.to_local(DevLocation.current_lat, DevLocation.current_lng)
-	camera.update_around(player_marker.global_position)
+	# The camera follows whichever Landmark is focused (tapped sign), or
+	# the player otherwise -- this is what makes "camera moves closer
+	# when clicked" work without a separate cinematic system.
+	var camera_target := focused_marker.global_position if focused_marker else player_marker.global_position
+	camera.update_around(camera_target)
 	# Ground is a single static placeholder plane, not per-tile geometry
 	# like roads/water -- recenter it on the player each frame so its
 	# fixed size never runs out relative to wherever the player actually
@@ -82,10 +90,7 @@ func _load_landmarks() -> void:
 	for row: Dictionary in rows:
 		var marker: LandmarkMarker = LandmarkMarkerScene.instantiate()
 		landmark_markers.add_child(marker)
-		marker.landmark_id = row.get("id", "")
-		marker.code = row.get("code", "")
-		marker.landmark_name = row.get("name", "")
-		marker.category = row.get("category", "")
+		marker.setup(row.get("id", ""), row.get("code", ""), row.get("name", ""), row.get("category", ""))
 		marker.position = GeoProjection.to_local(row.get("lat", 0.0), row.get("lng", 0.0))
 		marker.tapped.connect(_on_landmark_marker_tapped)
 		markers_by_landmark_id[marker.landmark_id] = marker
@@ -103,9 +108,25 @@ func _load_existing_visits() -> void:
 
 
 func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
-	landmark_display.show_landmark(marker)
+	if focused_marker == null:
+		_zoom_before_focus = camera.zoom
+	elif focused_marker != marker:
+		focused_marker.set_selected(false)
+
+	focused_marker = marker
+	marker.set_selected(true)
+	camera.animate_zoom_to(FOCUS_ZOOM)
+
+	landmark_display.show_landmark(marker, camera)
 	if marker.in_range:
 		await _record_visit(marker)
+
+
+func _on_landmark_display_closed() -> void:
+	if focused_marker:
+		focused_marker.set_selected(false)
+	focused_marker = null
+	camera.animate_zoom_to(_zoom_before_focus)
 
 
 func _record_visit(marker: LandmarkMarker) -> void:
