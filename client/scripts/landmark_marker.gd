@@ -51,8 +51,23 @@ var selected: bool = false
 @onready var category_tag: MeshInstance3D = $CategoryTag
 @onready var name_label: Label3D = $NameLabel3D
 @onready var sign_model: Node3D = $SignModel
+@onready var card_holders: Node3D = $CardHolders
 
 const ToonShader := preload("res://shaders/toon.gdshader")
+const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
+
+# Card/holder models are each authored at their own local origin (0,0,0)
+# in their own files -- they don't carry a baked position relative to
+# the sign, so placement has to happen here. FIRST_SLOT_POSITION is a
+# real reference point (converted from Blender Z-up to Godot Y-up:
+# X same, Y<-Blender Z, Z<-(-Blender Y)) taken from an example
+# arrangement Dominic had in his working scene, not a guess -- but
+# SLOT_SPACING (the vertical gap between stacked holders) IS an
+# estimate, derived from the card's own ~6.9cm height plus a small gap,
+# since no second reference point was available to measure spacing
+# directly. Check both once visible in Godot.
+const FIRST_SLOT_POSITION := Vector3(0.04, 1.7999, -2.2614)
+const SLOT_SPACING := 0.09
 
 
 func _ready() -> void:
@@ -91,7 +106,9 @@ func _apply_toon_demo_material(node: Node) -> void:
 # Single entry point for populating a freshly-instantiated marker --
 # keeps the 3D name tag/category color in sync with the data instead of
 # needing every caller to remember to update them separately.
-func setup(p_landmark_id: String, p_code: String, p_name: String, p_category: String) -> void:
+func setup(
+	p_landmark_id: String, p_code: String, p_name: String, p_category: String, p_slot_count: int = 3
+) -> void:
 	landmark_id = p_landmark_id
 	code = p_code
 	landmark_name = p_name
@@ -104,6 +121,22 @@ func setup(p_landmark_id: String, p_code: String, p_name: String, p_category: St
 	var tag_material := (category_tag.get_surface_override_material(0) as StandardMaterial3D).duplicate() as StandardMaterial3D
 	tag_material.albedo_color = CATEGORY_COLORS.get(category, CATEGORY_COLORS["other"])
 	category_tag.set_surface_override_material(0, tag_material)
+
+	_spawn_card_holders(p_slot_count)
+
+
+# One holder per profile_card_slot_count -- as a Landmark upgrades and
+# gains slots, this just spawns more holders stacked above the first,
+# not a new system. Holders are permanent sign fixtures (unlike the
+# cards themselves, which only exist once a player actually places one
+# -- that's a separate, not-yet-built system).
+func _spawn_card_holders(slot_count: int) -> void:
+	for existing in card_holders.get_children():
+		existing.queue_free()
+	for i in slot_count:
+		var holder := ProfileCardHolderScene.instantiate()
+		card_holders.add_child(holder)
+		holder.position = FIRST_SLOT_POSITION + Vector3(0, SLOT_SPACING * i, 0)
 
 
 func set_in_range(value: bool) -> void:

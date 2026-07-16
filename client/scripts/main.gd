@@ -88,14 +88,20 @@ func _check_proximity(delta: float) -> void:
 
 func _load_landmarks() -> void:
 	var rows: Array = await SupabaseClient.get_table(
-		"landmarks_map_view", "select=id,code,name,category,lat,lng"
+		"landmarks_map_view", "select=id,code,name,category,lat,lng,profile_card_slot_count"
 	)
 	print("Fetched %d published landmark(s)." % rows.size())
 
 	for row: Dictionary in rows:
 		var marker: LandmarkMarker = LandmarkMarkerScene.instantiate()
 		landmark_markers.add_child(marker)
-		marker.setup(row.get("id", ""), row.get("code", ""), row.get("name", ""), row.get("category", ""))
+		marker.setup(
+			row.get("id", ""),
+			row.get("code", ""),
+			row.get("name", ""),
+			row.get("category", ""),
+			row.get("profile_card_slot_count", 3)
+		)
 		marker.position = GeoProjection.to_local(row.get("lat", 0.0), row.get("lng", 0.0))
 		marker.tapped.connect(_on_landmark_marker_tapped)
 		markers_by_landmark_id[marker.landmark_id] = marker

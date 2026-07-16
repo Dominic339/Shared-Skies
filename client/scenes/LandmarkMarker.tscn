@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/landmark_marker.gd" id="1"]
 [ext_resource type="PackedScene" path="res://assets/models/landmark_sign.glb" id="2"]
+[ext_resource type="PackedScene" path="res://assets/models/profile_card_holder.glb" id="3"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1"]
 size = Vector3(0.4, 2.7, 2.4)
@@ -39,6 +40,8 @@ albedo_color = Color(0.7, 0.7, 0.7, 1)
 script = ExtResource("1")
 
 [node name="SignModel" parent="." instance=ExtResource("2")]
+
+[node name="CardHolders" type="Node3D" parent="."]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.27, -1.17)
