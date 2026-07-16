@@ -8,9 +8,9 @@ extends Camera3D
 # there's no way for the camera to end up aimed somewhere wrong.
 
 @export var min_zoom: float = 6.0
-@export var max_zoom: float = 20.0
+@export var max_zoom: float = 200.0  # real street geometry spans hundreds of meters, not ~20
 @export var drag_degrees_per_pixel: float = 0.3
-@export var zoom_step: float = 1.5
+@export var zoom_step: float = 10.0
 
 # 15-degree buffer off both extremes -- never fully edge-on (0 deg, camera
 # in the ground plane) and never fully top-down (90 deg, straight overhead)
@@ -20,7 +20,7 @@ const MAX_PITCH_DEGREES := 75.0
 
 var yaw_degrees: float = 0.0
 var pitch_degrees: float = 55.0
-var zoom: float = 12.0
+var zoom: float = 50.0
 
 var _dragging: bool = false
 
