@@ -55,6 +55,17 @@ const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
 const ProfileCardScene := preload("res://assets/models/profile_card.glb")
 
+# The card model was authored lying flat instead of standing upright, so
+# it needs an extra tip-up rotation applied on top of whatever it's
+# instantiated with. This is layered onto the card's own local rotation,
+# not a replacement of it -- and since the card is a direct child of its
+# holder, it already inherits the holder's own forward lean through the
+# scene hierarchy, so no separate tilt-matching is needed once this makes
+# it stand up correctly. Starting guess, unverified without seeing it
+# rendered -- if it's still flat, upside down, or leaning the wrong way,
+# this is the one value to change (try swapping the axis or negating it).
+const CARD_UPRIGHT_CORRECTION_DEGREES := Vector3(90.0, 0.0, 0.0)
+
 # Card/holder models are each authored at their own local origin (0,0,0)
 # in their own files -- they don't carry a baked position relative to
 # the sign, so placement has to happen here. FIRST_SLOT_POSITION is a
@@ -168,6 +179,7 @@ func _spawn_card_holders(slot_count: int) -> void:
 		# holder's groove rather than clip through it.
 		var card := ProfileCardScene.instantiate()
 		holder.add_child(card)
+		card.rotation_degrees += CARD_UPRIGHT_CORRECTION_DEGREES
 
 
 func set_in_range(value: bool) -> void:
