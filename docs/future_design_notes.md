@@ -5,6 +5,49 @@ intentionally NOT being built yet. Recorded here so the reasoning survives
 until the project reaches the point where it's actually needed -- these are
 not TODOs for right now.
 
+## Physical player cards (fly-up-and-fade reveal) and duotone postcards
+
+**Status:** Design decided in discussion, nothing built. Both ride on
+systems that don't exist yet (real card art, more image coverage), and
+were discussed late at night specifically to be picked up later, not
+started immediately.
+
+**Card holders/dispensers:** same fixed-child-node attachment pattern
+as the wax seal and the sign itself -- one small model per holder-size
+variant (matching a Landmark's `profile_card_slot_count`), attached at a
+known local position on the kiosk. Reliable across every sign instance
+for the same reason the seal is.
+
+**Physical player cards:** only one standard card model needed, reused
+for every player's card everywhere. Per-player content (name, design)
+projects onto its face via the same SubViewport-texture technique
+planned for the sign board -- one model, one projection mechanism,
+parameterized per player instead of per Landmark.
+
+**Reveal animation (tapping a card in its holder):** the physical 3D
+card tweens upward while fading out, and a full-screen 2D version fades
+in at the same time showing it in detail -- reuse the same rendered
+card-face texture for both the 3D object and the 2D reveal so the
+content is only built once. Position + opacity only, no rotation at any
+point, so the face is never edge-on or showing a blank back during the
+transition. Same `Tween` approach already used for the camera's
+zoom-on-tap, not a new technique for this project.
+
+**Duotone postcards:** a real photo run through grayscale -> two-color
+gradient remap (optionally posterized for punchier flat tones) is a
+simple, fully automatable, deterministic image-processing step (Python
++ Pillow, or a runtime shader) -- no manual art needed per landmark, and
+would give postcards a cohesive stylized identity. Explicitly NOT the
+same as matching a hand-illustrated vector-skyline look (clean
+simplified shapes, deliberately placed sun/cloud elements, consistent
+line weight) -- that's illustrated art, not a photo filter, and
+reproducing it automatically from arbitrary real photos isn't reliable
+without either manual illustration per landmark (doesn't scale) or an
+AI generation step (inconsistent output, needs curation, not
+run-once-and-trust). Also gated on having more real landmark photos in
+the first place -- image candidate coverage was only ~2% for Nashua
+last measured.
+
 ## Road joint rendering (known, deliberately deferred)
 
 **Status:** Left as-is on purpose -- the first tile renderer proof is
