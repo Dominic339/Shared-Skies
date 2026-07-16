@@ -22,6 +22,18 @@ const CATEGORY_COLORS := {
 const NAME_COLOR := Color(1, 1, 1)
 const NAME_COLOR_SELECTED := Color(1, 0.85, 0.3)
 
+# Signs are real-world scale (~2.5m), which is correct up close but
+# shrinks to an unreadable speck once the camera pulls back far enough
+# to see real street-scale distances. Same fix every GPS-based map game
+# uses for points of interest: stay true-to-life size up close, then
+# grow to counteract perspective shrinkage beyond CLOSE_DISTANCE_METERS,
+# capped at MAX_DISTANCE_SCALE so far-off signs stay visibly "there"
+# without becoming absurdly huge. Not meant to make a sign readable from
+# any distance -- just visible; reading it is still what walking up to
+# it is for.
+const CLOSE_DISTANCE_METERS := 25.0
+const MAX_DISTANCE_SCALE := 6.0
+
 var landmark_id: String = ""
 var code: String = ""
 var landmark_name: String = ""
@@ -104,6 +116,15 @@ func set_visited(value: bool) -> void:
 func set_selected(value: bool) -> void:
 	selected = value
 	name_label.modulate = NAME_COLOR_SELECTED if value else NAME_COLOR
+
+
+# Called every frame by main.gd with the camera's actual distance to
+# this marker -- scales the whole marker (sign, indicators, label, and
+# its collision shape, so tapping stays just as easy at a distance) as
+# a single unit to counteract perspective shrinkage.
+func update_distance_scale(camera_distance: float) -> void:
+	var factor := camera_distance / CLOSE_DISTANCE_METERS
+	scale = Vector3.ONE * clampf(factor, 1.0, MAX_DISTANCE_SCALE)
 
 
 func _on_input_event(

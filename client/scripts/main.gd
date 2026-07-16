@@ -77,8 +77,12 @@ func _handle_movement_input(delta: float) -> void:
 
 func _check_proximity() -> void:
 	for marker: LandmarkMarker in landmark_markers.get_children():
-		var distance := player_marker.global_position.distance_to(marker.global_position)
-		marker.set_in_range(distance <= PROXIMITY_RADIUS_METERS)
+		var player_distance := player_marker.global_position.distance_to(marker.global_position)
+		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
+		# Camera distance, not player distance -- the camera can be
+		# focused/zoomed away from the player, and this is specifically
+		# about keeping the sign visible on screen, not about proximity.
+		marker.update_distance_scale(camera.global_position.distance_to(marker.global_position))
 
 
 func _load_landmarks() -> void:
