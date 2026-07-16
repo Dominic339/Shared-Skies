@@ -43,7 +43,7 @@ func _process(delta: float) -> void:
 	# roams. A real fix (ground as part of the tile system) can replace
 	# this once habitat/land-cover rendering lands.
 	ground.position = Vector3(player_marker.position.x, 0.0, player_marker.position.z)
-	_check_proximity()
+	_check_proximity(delta)
 
 
 func _handle_movement_input(delta: float) -> void:
@@ -75,15 +75,15 @@ func _handle_movement_input(delta: float) -> void:
 	DevLocation.move(movement.x, -movement.z)
 
 
-func _check_proximity() -> void:
+func _check_proximity(delta: float) -> void:
 	for marker: LandmarkMarker in landmark_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
-		# Camera distance, not player distance -- the camera can be
-		# focused/zoomed away from the player, and this is specifically
-		# about keeping the sign visible on screen, not about proximity.
+		# Camera distance/position, not the player's -- the camera can be
+		# dragged or focused away from the player, and both of these are
+		# about what's actually being looked through, not proximity.
 		marker.update_distance_scale(camera.global_position.distance_to(marker.global_position))
-		marker.face_player(player_marker.global_position)
+		marker.face_camera(camera.global_position, delta)
 
 
 func _load_landmarks() -> void:

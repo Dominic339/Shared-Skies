@@ -130,24 +130,33 @@ func update_distance_scale(camera_distance: float) -> void:
 	scale = Vector3.ONE * clampf(factor, MIN_DISTANCE_SCALE, MAX_DISTANCE_SCALE)
 
 
-# Degrees added after look_at() to correct for the sign model's authored
-# front direction not matching Godot's look_at() default (local -Z is
-# "forward"). If the sign ends up facing away from the player once
-# tested, this is the one number to change -- try 90, -90, or 180.
+# Degrees added on top of the raw look-at angle to correct for the sign
+# model's authored front direction not matching Godot's look_at()
+# default (local -Z is "forward"). If the sign ends up facing away from
+# the camera once tested, this is the one number to change -- try 90,
+# -90, or 180.
 const FRONT_AXIS_CORRECTION_DEGREES := -90.0
+const TURN_SPEED_DEGREES_PER_SEC := 90.0
 
 
 # Rotates the whole marker (board + collision + indicators together, so
 # they stay aligned) around the vertical axis only -- never tilts up/
-# down -- to keep the sign's readable face toward the player regardless
-# of which side they approach from.
-func face_player(player_global_position: Vector3) -> void:
-	var target := player_global_position
+# down -- to keep the sign's readable face toward the camera (not the
+# player avatar -- the camera can be dragged to a different angle, and
+# it's what the player is actually looking through) regardless of which
+# side it's viewed from. Turns at a limited speed instead of snapping
+# instantly.
+func face_camera(camera_global_position: Vector3, delta: float) -> void:
+	var target := camera_global_position
 	target.y = global_position.y
 	if target.distance_to(global_position) < 0.01:
 		return
-	look_at(target, Vector3.UP)
-	rotate_y(deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES))
+
+	var to_target := target - global_position
+	var target_yaw := atan2(to_target.x, to_target.z) + deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES)
+	var max_step := deg_to_rad(TURN_SPEED_DEGREES_PER_SEC) * delta
+	var diff := wrapf(target_yaw - rotation.y, -PI, PI)
+	rotation.y += clampf(diff, -max_step, max_step)
 
 
 func _on_input_event(
