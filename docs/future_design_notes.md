@@ -33,20 +33,20 @@ point, so the face is never edge-on or showing a blank back during the
 transition. Same `Tween` approach already used for the camera's
 zoom-on-tap, not a new technique for this project.
 
-**Duotone postcards:** a real photo run through grayscale -> two-color
-gradient remap (optionally posterized for punchier flat tones) is a
-simple, fully automatable, deterministic image-processing step (Python
-+ Pillow, or a runtime shader) -- no manual art needed per landmark, and
-would give postcards a cohesive stylized identity. Explicitly NOT the
-same as matching a hand-illustrated vector-skyline look (clean
-simplified shapes, deliberately placed sun/cloud elements, consistent
-line weight) -- that's illustrated art, not a photo filter, and
-reproducing it automatically from arbitrary real photos isn't reliable
-without either manual illustration per landmark (doesn't scale) or an
-AI generation step (inconsistent output, needs curation, not
-run-once-and-trust). Also gated on having more real landmark photos in
-the first place -- image candidate coverage was only ~2% for Nashua
-last measured.
+**Duotone postcards -- scope simplified:** originally discussed as
+per-Landmark art (a real photo run through grayscale -> two-color
+gradient remap, optionally posterized for punchier flat tones -- a
+simple, deterministic, fully automatable filter, distinct from matching
+a hand-illustrated vector-skyline look, which isn't reliably achievable
+from arbitrary photos without manual art or an AI generation step).
+That's now explicitly descoped: a Landmark's postcard reuses its
+Community Center's postcard art rather than needing distinct art per
+Landmark. The postcard row is still collected per-Landmark-visit (own
+record, own season/weather/time-of-day), but `artwork_render_url` points
+at whatever the Community's own postcard already uses. This sidesteps
+the image-coverage gate entirely -- one good piece of art per
+*Community* is easy to curate; one per *Landmark* was the part actually
+blocked on the ~2% image-candidate coverage measured for Nashua.
 
 ## Road joint rendering (known, deliberately deferred)
 
