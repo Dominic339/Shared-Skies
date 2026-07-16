@@ -69,6 +69,14 @@ const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder
 const FIRST_SLOT_POSITION := Vector3(0.04, 1.7999, -2.2614)
 const SLOT_SPACING := 0.09
 
+# Real measured height of the sign structure (parsed directly from
+# landmark_sign.glb's mesh accessor bounds + its node transform, not a
+# screenshot estimate): ~2.54m tall, ~2.26m wide. Used as the anchor height
+# for the info panel so it tracks the actual sign top instead of the
+# marker's ground-level origin -- anchoring to ground was what let the
+# panel overlap the sign as it got closer/bigger on screen.
+const STRUCTURE_TOP_HEIGHT_METERS := 2.54
+
 
 func _ready() -> void:
 	input_ray_pickable = true
@@ -151,6 +159,12 @@ func set_visited(value: bool) -> void:
 
 func set_selected(value: bool) -> void:
 	selected = value
+	# The floating in-world name tag is sized for browsing from a distance
+	# -- at focus range it's many times wider than the sign itself (a long
+	# name at Label3D's world scale dwarfs the ~2.26m board), and the info
+	# panel already shows the name up close, so keeping both up is both
+	# redundant and what was actually overflowing the screen on focus.
+	name_label.visible = not value
 	name_label.modulate = NAME_COLOR_SELECTED if value else NAME_COLOR
 
 
@@ -170,6 +184,13 @@ func update_distance_scale(camera_distance: float) -> void:
 # -90, or 180.
 const FRONT_AXIS_CORRECTION_DEGREES := -90.0
 const TURN_SPEED_DEGREES_PER_SEC := 90.0
+# While selected/focused, the camera cuts to a close head-on framing almost
+# immediately (see main.gd's FOCUS_ZOOM/FOCUS_PITCH_DEGREES) -- the normal
+# ambient turn speed is too slow to keep up within that same instant, which
+# is what produced the off-angle "still turning" look right after a tap.
+# Selected state gets a much faster turn instead of an instant snap, so it
+# still reads as a motion rather than a hard cut.
+const FOCUSED_TURN_SPEED_DEGREES_PER_SEC := 720.0
 
 
 # Rotates the whole marker (board + collision + indicators together, so
@@ -187,7 +208,8 @@ func face_camera(camera_global_position: Vector3, delta: float) -> void:
 
 	var to_target := target - global_position
 	var target_yaw := atan2(to_target.x, to_target.z) + deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES)
-	var max_step := deg_to_rad(TURN_SPEED_DEGREES_PER_SEC) * delta
+	var turn_speed := FOCUSED_TURN_SPEED_DEGREES_PER_SEC if selected else TURN_SPEED_DEGREES_PER_SEC
+	var max_step := deg_to_rad(turn_speed) * delta
 	var diff := wrapf(target_yaw - rotation.y, -PI, PI)
 	rotation.y += clampf(diff, -max_step, max_step)
 

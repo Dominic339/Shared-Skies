@@ -40,7 +40,11 @@ func _process(_delta: float) -> void:
 
 
 func _update_position() -> void:
-	var screen_point := _camera.unproject_position(_marker.global_position)
+	# Anchor above the sign's actual top (real measured height, not the
+	# marker's ground-level origin) -- anchoring to ground let the panel
+	# increasingly overlap the sign as it got bigger/closer on screen.
+	var anchor := _marker.global_position + Vector3(0, LandmarkMarker.STRUCTURE_TOP_HEIGHT_METERS, 0)
+	var screen_point := _camera.unproject_position(anchor)
 	var target_bottom_y := screen_point.y - SCREEN_MARGIN_ABOVE_SIGN
 	panel.position = Vector2(screen_point.x - panel.size.x / 2.0, target_bottom_y - panel.size.y)
 
