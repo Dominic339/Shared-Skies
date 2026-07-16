@@ -22,20 +22,12 @@ const CATEGORY_COLORS := {
 const NAME_COLOR := Color(1, 1, 1)
 const NAME_COLOR_SELECTED := Color(1, 0.85, 0.3)
 
-# Signs are real-world scale (~2.5m), which is correct up close but
-# shrinks to an unreadable speck once the camera pulls back far enough
-# to see real street-scale distances. Same fix every GPS-based map game
-# uses for points of interest: stay true-to-life size up close (never
-# below MIN_DISTANCE_SCALE, effectively 1x/true size), then grow to
-# counteract perspective shrinkage as the camera pulls back, hard capped
-# at MAX_DISTANCE_SCALE -- reached by (CLOSE_DISTANCE_METERS *
-# MAX_DISTANCE_SCALE) meters, deliberately close enough to hit during
-# normal play, not just in theory at extreme zoom. Not meant to make a
-# sign readable from any distance -- just visible; reading it is still
-# what walking up to one is for.
-const CLOSE_DISTANCE_METERS := 25.0
-const MIN_DISTANCE_SCALE := 1.0
-const MAX_DISTANCE_SCALE := 3.0  # plateaus at 75m -- well within normal zoomed-out map view
+# Fixed scale, not distance-compensated -- an earlier version grew the
+# sign as the camera pulled back to counteract perspective shrinkage, but
+# that made it visibly resize/shrink relative to the camera in a way that
+# read as wrong rather than helpful. Signs are just a set size now, same
+# as everything else in the world.
+const SIGN_SCALE := 1.0
 
 var landmark_id: String = ""
 var code: String = ""
@@ -83,6 +75,7 @@ func _ready() -> void:
 	input_event.connect(_on_input_event)
 	in_range_indicator.visible = false
 	visited_indicator.visible = false
+	scale = Vector3.ONE * SIGN_SCALE
 	_apply_toon_demo_material(sign_model)
 
 
@@ -166,15 +159,6 @@ func set_selected(value: bool) -> void:
 	# redundant and what was actually overflowing the screen on focus.
 	name_label.visible = not value
 	name_label.modulate = NAME_COLOR_SELECTED if value else NAME_COLOR
-
-
-# Called every frame by main.gd with the camera's actual distance to
-# this marker -- scales the whole marker (sign, indicators, label, and
-# its collision shape, so tapping stays just as easy at a distance) as
-# a single unit to counteract perspective shrinkage.
-func update_distance_scale(camera_distance: float) -> void:
-	var factor := camera_distance / CLOSE_DISTANCE_METERS
-	scale = Vector3.ONE * clampf(factor, MIN_DISTANCE_SCALE, MAX_DISTANCE_SCALE)
 
 
 # Degrees added on top of the raw look-at angle to correct for the sign

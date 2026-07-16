@@ -90,10 +90,6 @@ func _check_proximity(delta: float) -> void:
 	for marker: LandmarkMarker in landmark_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
-		# Camera distance/position, not the player's -- the camera can be
-		# dragged or focused away from the player, and both of these are
-		# about what's actually being looked through, not proximity.
-		marker.update_distance_scale(camera.global_position.distance_to(marker.global_position))
 		marker.face_camera(camera.global_position, delta)
 
 
