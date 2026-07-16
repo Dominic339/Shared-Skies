@@ -26,8 +26,14 @@ const NAME_COLOR_SELECTED := Color(1, 0.85, 0.3)
 # sign as the camera pulled back to counteract perspective shrinkage, but
 # that made it visibly resize/shrink relative to the camera in a way that
 # read as wrong rather than helpful. Signs are just a set size now, same
-# as everything else in the world.
-const SIGN_SCALE := 1.0
+# as everything else in the world. 2x true model scale for a bigger visual
+# presence (closer to how prominent Pokestop/gym markers read in Pokemon
+# GO), not real-world accuracy -- if this scales the whole marker,
+# remember STRUCTURE_TOP_HEIGHT_METERS below and main.gd's
+# FOCUS_TARGET_HEIGHT_METERS are world-space constants added to
+# global_position directly (not local child transforms), so they need to
+# scale by the same factor to still point at the sign's actual top/center.
+const SIGN_SCALE := 2.0
 
 var landmark_id: String = ""
 var code: String = ""
@@ -63,11 +69,15 @@ const SLOT_SPACING := 0.09
 
 # Real measured height of the sign structure (parsed directly from
 # landmark_sign.glb's mesh accessor bounds + its node transform, not a
-# screenshot estimate): ~2.54m tall, ~2.26m wide. Used as the anchor height
-# for the info panel so it tracks the actual sign top instead of the
-# marker's ground-level origin -- anchoring to ground was what let the
-# panel overlap the sign as it got closer/bigger on screen.
-const STRUCTURE_TOP_HEIGHT_METERS := 2.54
+# screenshot estimate): ~2.54m tall at true (1x) scale, ~2.26m wide.
+# Multiplied by SIGN_SCALE since this is a world-space offset added to
+# global_position directly, not a local child transform -- it doesn't
+# get scaled automatically the way the sign mesh and other child nodes
+# do. Used as the anchor height for the info panel so it tracks the
+# actual sign top instead of the marker's ground-level origin --
+# anchoring to ground was what let the panel overlap the sign as it got
+# closer/bigger on screen.
+const STRUCTURE_TOP_HEIGHT_METERS := 2.54 * SIGN_SCALE
 
 
 func _ready() -> void:

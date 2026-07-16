@@ -3,13 +3,16 @@ extends Node3D
 const LandmarkMarkerScene := preload("res://scenes/LandmarkMarker.tscn")
 const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real gameplay uses actual device GPS, not this
 const PROXIMITY_RADIUS_METERS := 25.0
-const FOCUS_ZOOM := 10.0  # gives the ~2.26m-wide sign structure comfortable margin in the portrait-narrow horizontal FOV
+const FOCUS_ZOOM := 7.0  # close, near min_zoom -- the earlier overflow at this range was the name label, not the board itself, and that's now hidden while focused
 const FOCUS_PITCH_DEGREES := 25.0  # level enough to look at the board face, not down at its base
 # Board's face sits roughly at this height above the marker's (ground-level)
 # origin -- orbiting around the ground would tilt the framing toward the
 # sign's base instead of centering the board itself. Matches the board's
-# vertical center per its CollisionShape3D (position.y = 1.27).
-const FOCUS_TARGET_HEIGHT_METERS := 1.3
+# vertical center per its CollisionShape3D (position.y = 1.27), scaled by
+# LandmarkMarker.SIGN_SCALE since this is a world-space offset added to
+# global_position directly, not a local child transform that scales
+# automatically with the marker.
+const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ground: Node3D = $Ground
