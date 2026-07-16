@@ -35,6 +35,9 @@ var selected: bool = false
 @onready var visited_indicator: MeshInstance3D = $VisitedIndicator
 @onready var category_tag: MeshInstance3D = $CategoryTag
 @onready var name_label: Label3D = $NameLabel3D
+@onready var signpost_model: Node3D = $SignpostModel
+
+const ToonShader := preload("res://shaders/toon.gdshader")
 
 
 func _ready() -> void:
@@ -42,6 +45,27 @@ func _ready() -> void:
 	input_event.connect(_on_input_event)
 	in_range_indicator.visible = false
 	visited_indicator.visible = false
+	_apply_toon_demo_material(signpost_model)
+
+
+# TEMPORARY: demos the toon/cel-shading shader on the placeholder
+# signpost so it's visible in-game before the real kiosk model exists.
+# Remove this once real materials replace it -- the real sign should
+# get its toon material set up deliberately (e.g. via setup()), not
+# forced onto every mesh underneath it like this.
+func _apply_toon_demo_material(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mesh_instance := node as MeshInstance3D
+		var material := ShaderMaterial.new()
+		material.shader = ToonShader
+		material.set_shader_parameter("albedo_tint", Color(0.4, 0.27, 0.15))
+		material.set_shader_parameter("use_vertex_color", false)
+		material.set_shader_parameter("light_bands", 3)
+		material.set_shader_parameter("band_softness", 0.15)
+		for surface_idx in mesh_instance.mesh.get_surface_count():
+			mesh_instance.set_surface_override_material(surface_idx, material)
+	for child in node.get_children():
+		_apply_toon_demo_material(child)
 
 
 # Single entry point for populating a freshly-instantiated marker --
