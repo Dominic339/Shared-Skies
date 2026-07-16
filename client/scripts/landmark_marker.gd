@@ -53,7 +53,6 @@ var selected: bool = false
 
 const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
-const ProfileCardScene := preload("res://assets/models/profile_card.glb")
 
 # Card/holder models are each authored at their own local origin (0,0,0)
 # in their own files -- they don't carry a baked position relative to
@@ -157,20 +156,16 @@ func _spawn_card_holders(slot_count: int) -> void:
 		var holder := ProfileCardHolderScene.instantiate()
 		card_holders.add_child(holder)
 		holder.position = FIRST_SLOT_POSITION + Vector3(0, SLOT_SPACING * i, 0)
-		# TEMPORARY fit test -- spawns a card in every holder just to check
-		# they sit correctly, not real gameplay (that only shows a card
-		# once a player has actually left one, which isn't built yet).
-		# The card model is now pre-authored standing upright with its own
-		# 20 deg forward lean baked in to match the holder (confirmed in
-		# Blender: Rotation X=0, Y=20, Z=0), so no rotation correction is
-		# applied here -- it's parented as-is.
-		var card := ProfileCardScene.instantiate()
-		holder.add_child(card)
-		# The holder is a hollow pocket (open-top scoop), tilted forward.
-		# Dialing in by feel: moving up along the tilted pocket also needs
-		# a bit more forward to compensate, since the opening itself is
-		# angled rather than flat.
-		card.position = Vector3(0.002, 0.03, 0)
+		# Holders are permanent sign fixtures; cards are not spawned here
+		# -- real gameplay only shows a card once a player has actually
+		# left one, which isn't built yet. The fit test that used to spawn
+		# a card in every holder confirmed the placement/orientation
+		# works: preload("res://assets/models/profile_card.glb").instantiate()
+		# as a child of `holder`, no rotation correction needed (the model
+		# now has its upright + 20 deg forward lean pre-baked to match the
+		# holder), and card.position = Vector3(0.002, 0.03, 0) to sit
+		# correctly in the holder's pocket. Reuse these exact values when
+		# building real card placement.
 
 
 func set_in_range(value: bool) -> void:
