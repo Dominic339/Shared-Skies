@@ -62,16 +62,24 @@ func _load_tile(x: int, y: int, key: String) -> void:
 	add_child(tile_node)
 	_loaded_tiles[key] = tile_node
 
-	for road: Dictionary in data.get("roads", []):
-		_add_road_mesh(tile_node, road)
-	for water: Dictionary in data.get("water", []):
+	var road_list: Array = data.get("roads", [])
+	var water_list: Array = data.get("water", [])
+	print("  [%s] parsed %d road(s), %d water polygon(s) from JSON" % [key, road_list.size(), water_list.size()])
+
+	var road_meshes_built := 0
+	for road: Dictionary in road_list:
+		if _add_road_mesh(tile_node, road):
+			road_meshes_built += 1
+	print("  [%s] built %d road mesh(es), tile_node now has %d child(ren)" % [key, road_meshes_built, tile_node.get_child_count()])
+
+	for water: Dictionary in water_list:
 		_add_water_mesh(tile_node, water)
 
 
-func _add_road_mesh(parent: Node3D, road: Dictionary) -> void:
+func _add_road_mesh(parent: Node3D, road: Dictionary) -> bool:
 	var points: Array = road.get("points", [])
 	if points.size() < 2:
-		return
+		return false
 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -98,8 +106,16 @@ func _add_road_mesh(parent: Node3D, road: Dictionary) -> void:
 	mesh_instance.mesh = st.commit()
 	var material := StandardMaterial3D.new()
 	material.albedo_color = ROAD_COLOR
+	# Disabled culling as a direct test of a real hypothesis: if the ribbon
+	# triangles' winding order is inverted, their visible face could point
+	# down into the ground instead of up at the camera -- which would look
+	# exactly like "hidden under the ground" without being a data or
+	# position bug at all. Ruling this out directly rather than re-deriving
+	# the winding math by hand a second time.
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mesh_instance.material_override = material
 	parent.add_child(mesh_instance)
+	return true
 
 
 func _add_water_mesh(parent: Node3D, water: Dictionary) -> void:
