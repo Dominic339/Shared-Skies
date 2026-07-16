@@ -55,18 +55,6 @@ const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
 const ProfileCardScene := preload("res://assets/models/profile_card.glb")
 
-# The card model's SCALE alone already assigns the right real-world
-# proportions (thin on X, ~6.9cm tall on Y, ~4.2cm wide on Z) -- with zero
-# rotation it would already stand upright correctly. The "lying flat"
-# problem is an accidental ~92 deg rotation baked into the node on top of
-# that already-correct scale (most likely from tipping the object over in
-# Blender at some point), not something that needs a compensating
-# rotation. Discarding it (rotation = zero) is simpler and more reliable
-# than composing a counter-rotation on top of an arbitrary baked value.
-# Zero LOCAL rotation also means "same orientation as its parent", so as
-# a direct child of its holder, the card automatically matches the
-# holder's own forward lean with no extra rotation needed at all.
-
 # Card/holder models are each authored at their own local origin (0,0,0)
 # in their own files -- they don't carry a baked position relative to
 # the sign, so placement has to happen here. FIRST_SLOT_POSITION is a
@@ -172,15 +160,12 @@ func _spawn_card_holders(slot_count: int) -> void:
 		# TEMPORARY fit test -- spawns a card in every holder just to check
 		# they sit correctly, not real gameplay (that only shows a card
 		# once a player has actually left one, which isn't built yet).
-		# Card and holder are each authored at their own local origin
-		# (0,0,0) in their own files, not positioned relative to each
-		# other, so this assumes a card sits flush with the holder's own
-		# origin when parented to it -- check visually once in Godot, this
-		# may need a small offset/rotation to actually nestle into the
-		# holder's groove rather than clip through it.
+		# The card model is now pre-authored standing upright with its own
+		# 20 deg forward lean baked in to match the holder (confirmed in
+		# Blender: Rotation X=0, Y=20, Z=0), so no rotation correction is
+		# applied here -- it's parented as-is.
 		var card := ProfileCardScene.instantiate()
 		holder.add_child(card)
-		card.rotation = Vector3.ZERO
 
 
 func set_in_range(value: bool) -> void:
