@@ -5,6 +5,24 @@ intentionally NOT being built yet. Recorded here so the reasoning survives
 until the project reaches the point where it's actually needed -- these are
 not TODOs for right now.
 
+## Road joint rendering (known, deliberately deferred)
+
+**Status:** Left as-is on purpose -- the first tile renderer proof is
+working (real Nashua streets and water, correctly aligned and streaming),
+and this is polish on top of that, not a blocker.
+
+Each road segment in `map_tile_loader.gd` is built as its own independent
+ribbon quad, with no miter/joint handling where two segments meet -- so
+every bend and intersection shows a visible notch/gap rather than a
+clean corner. Confirmed real (not a data bug) when tested against actual
+Nashua streets; looks noticeably rough at intersections. A cheap fix
+(a small flat disc at each interior vertex, same road color, papering
+over the gap without real miter-angle math) was proposed and deliberately
+not implemented yet -- Dominic would rather bank the milestone and
+move to gameplay features first. Revisit alongside the stylized
+materials/decoration pass when the map's visual polish becomes the
+active focus again.
+
 ## World map tile pipeline (roads + habitat data)
 
 **Status:** Not yet built. This section documents the architecture
