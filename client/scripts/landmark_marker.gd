@@ -25,14 +25,17 @@ const NAME_COLOR_SELECTED := Color(1, 0.85, 0.3)
 # Signs are real-world scale (~2.5m), which is correct up close but
 # shrinks to an unreadable speck once the camera pulls back far enough
 # to see real street-scale distances. Same fix every GPS-based map game
-# uses for points of interest: stay true-to-life size up close, then
-# grow to counteract perspective shrinkage beyond CLOSE_DISTANCE_METERS,
-# capped at MAX_DISTANCE_SCALE so far-off signs stay visibly "there"
-# without becoming absurdly huge. Not meant to make a sign readable from
-# any distance -- just visible; reading it is still what walking up to
-# it is for.
+# uses for points of interest: stay true-to-life size up close (never
+# below MIN_DISTANCE_SCALE, effectively 1x/true size), then grow to
+# counteract perspective shrinkage as the camera pulls back, hard capped
+# at MAX_DISTANCE_SCALE -- reached by (CLOSE_DISTANCE_METERS *
+# MAX_DISTANCE_SCALE) meters, deliberately close enough to hit during
+# normal play, not just in theory at extreme zoom. Not meant to make a
+# sign readable from any distance -- just visible; reading it is still
+# what walking up to one is for.
 const CLOSE_DISTANCE_METERS := 25.0
-const MAX_DISTANCE_SCALE := 6.0
+const MIN_DISTANCE_SCALE := 1.0
+const MAX_DISTANCE_SCALE := 3.0  # plateaus at 75m -- well within normal zoomed-out map view
 
 var landmark_id: String = ""
 var code: String = ""
@@ -124,7 +127,27 @@ func set_selected(value: bool) -> void:
 # a single unit to counteract perspective shrinkage.
 func update_distance_scale(camera_distance: float) -> void:
 	var factor := camera_distance / CLOSE_DISTANCE_METERS
-	scale = Vector3.ONE * clampf(factor, 1.0, MAX_DISTANCE_SCALE)
+	scale = Vector3.ONE * clampf(factor, MIN_DISTANCE_SCALE, MAX_DISTANCE_SCALE)
+
+
+# Degrees added after look_at() to correct for the sign model's authored
+# front direction not matching Godot's look_at() default (local -Z is
+# "forward"). If the sign ends up facing away from the player once
+# tested, this is the one number to change -- try 90, -90, or 180.
+const FRONT_AXIS_CORRECTION_DEGREES := -90.0
+
+
+# Rotates the whole marker (board + collision + indicators together, so
+# they stay aligned) around the vertical axis only -- never tilts up/
+# down -- to keep the sign's readable face toward the player regardless
+# of which side they approach from.
+func face_player(player_global_position: Vector3) -> void:
+	var target := player_global_position
+	target.y = global_position.y
+	if target.distance_to(global_position) < 0.01:
+		return
+	look_at(target, Vector3.UP)
+	rotate_y(deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES))
 
 
 func _on_input_event(

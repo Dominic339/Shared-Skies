@@ -83,6 +83,7 @@ func _check_proximity() -> void:
 		# focused/zoomed away from the player, and this is specifically
 		# about keeping the sign visible on screen, not about proximity.
 		marker.update_distance_scale(camera.global_position.distance_to(marker.global_position))
+		marker.face_player(player_marker.global_position)
 
 
 func _load_landmarks() -> void:
