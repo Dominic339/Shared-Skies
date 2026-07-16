@@ -71,17 +71,6 @@ const ProfileCardScene := preload("res://assets/models/profile_card.glb")
 # own forward lean through the scene hierarchy once this is right.
 const CARD_UPRIGHT_CORRECTION_DEGREES := -90.0
 
-# The card mesh isn't centered on its own local origin along its thin
-# (face-normal) axis -- raw mesh bounds are 0.395..0.485 on that axis
-# (entirely positive, never straddling 0), and after scale that's a mesh
-# center 0.00925m away from the origin. Both rotations above are about
-# that same axis, so they never move this offset -- rotating about an
-# axis never moves points that lie along it. Left alone, the card sits
-# that far out from wherever its origin is anchored (the holder's own
-# origin), which is what "sticking out" is. Shifting the card back by
-# that same amount recenters its mesh ON the origin instead.
-const CARD_CENTERING_OFFSET_METERS := -0.00925
-
 # Card/holder models are each authored at their own local origin (0,0,0)
 # in their own files -- they don't carry a baked position relative to
 # the sign, so placement has to happen here. FIRST_SLOT_POSITION is a
@@ -196,7 +185,11 @@ func _spawn_card_holders(slot_count: int) -> void:
 		var card := ProfileCardScene.instantiate()
 		holder.add_child(card)
 		card.rotate_object_local(Vector3.RIGHT, deg_to_rad(CARD_UPRIGHT_CORRECTION_DEGREES))
-		card.position = Vector3(CARD_CENTERING_OFFSET_METERS, 0, 0)
+		# Reverted: shifting by the full CARD_CENTERING_OFFSET_METERS moved
+		# the card's mesh to sit centered inside the holder's own solid
+		# body instead of on its face, hiding it entirely. Back to no
+		# offset (the "sticking out" state) until we know which direction
+		# and how far it actually needs to move.
 
 
 func set_in_range(value: bool) -> void:
