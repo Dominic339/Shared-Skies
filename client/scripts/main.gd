@@ -5,6 +5,14 @@ const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real 
 const PROXIMITY_RADIUS_METERS := 25.0
 const FOCUS_ZOOM := 5.5  # tighter than free-roam ever needs -- fills the frame with the ~4.5m (2x-scaled) sign structure
 const FOCUS_PITCH_DEGREES := 0.0  # fully level -- flat-on with the board, not looking down at it from above
+# Fixed, arbitrary reference angle for the focus view -- both the camera's
+# yaw and the sign's rotation snap to this same absolute value (see
+# LandmarkMarker.snap_to_fixed_yaw()) instead of being derived from
+# wherever the player/camera actually was before tapping. That's what
+# makes the focused framing identical every time, regardless of approach
+# angle -- deriving it from the camera's real position (the previous
+# approach) just moved the inconsistency around instead of removing it.
+const FOCUS_CAMERA_YAW_DEGREES := 0.0
 # Board's face sits roughly at this height above the marker's (ground-level)
 # origin -- orbiting around the ground would tilt the framing toward the
 # sign's base instead of centering the board itself. Matches the board's
@@ -29,6 +37,7 @@ var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
 var _zoom_before_focus: float = 50.0
 var _pitch_before_focus: float = 55.0
+var _yaw_before_focus: float = 0.0
 
 
 func _ready() -> void:
@@ -142,12 +151,14 @@ func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 	if focused_marker == null:
 		_zoom_before_focus = camera.zoom
 		_pitch_before_focus = camera.pitch_degrees
+		_yaw_before_focus = camera.yaw_degrees
 	elif focused_marker != marker:
 		focused_marker.set_selected(false)
 
 	focused_marker = marker
 	marker.set_selected(true)
-	marker.snap_to_camera(camera.global_position)
+	marker.snap_to_fixed_yaw(FOCUS_CAMERA_YAW_DEGREES)
+	camera.yaw_degrees = FOCUS_CAMERA_YAW_DEGREES
 	camera.locked = true
 	camera.animate_zoom_to(FOCUS_ZOOM)
 	camera.animate_pitch_to(FOCUS_PITCH_DEGREES)
@@ -162,6 +173,7 @@ func _on_landmark_display_closed() -> void:
 		focused_marker.set_selected(false)
 	focused_marker = null
 	camera.locked = false
+	camera.yaw_degrees = _yaw_before_focus
 	camera.animate_zoom_to(_zoom_before_focus)
 	camera.animate_pitch_to(_pitch_before_focus)
 

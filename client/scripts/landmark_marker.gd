@@ -238,15 +238,17 @@ func face_camera(camera_global_position: Vector3, delta: float) -> void:
 	rotation.y += clampf(diff, -max_step, max_step)
 
 
-# Instantly aligns to face the camera, bypassing the turn-speed limit --
-# used at the moment a sign is tapped so the focused view always shows the
-# exact same framing regardless of how far the ambient face_camera()
-# tracking had gotten before the tap (which depended on the player's
-# approach angle and was a real source of inconsistent focus framing).
-func snap_to_camera(camera_global_position: Vector3) -> void:
-	var target_yaw: Variant = _target_yaw(camera_global_position)
-	if target_yaw != null:
-		rotation.y = target_yaw
+# Snaps to face a FIXED camera yaw (main.gd's FOCUS_CAMERA_YAW_DEGREES),
+# not wherever the camera actually is -- the focused view is meant to be
+# one absolute, deterministic framing, completely independent of the
+# player's position/approach angle before tapping. That's the actual fix
+# for the inconsistent framing: snap_to_camera() (this method's
+# predecessor) still computed yaw from the camera's real position, which
+# just moved the dependency on approach angle from "how far ambient
+# tracking caught up" to "where the player was standing when they
+# tapped" -- still not deterministic.
+func snap_to_fixed_yaw(camera_yaw_degrees: float) -> void:
+	rotation.y = deg_to_rad(camera_yaw_degrees) + deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES)
 
 
 func _on_input_event(
