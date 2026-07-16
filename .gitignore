@@ -9,3 +9,10 @@ client/.godot/
 client/android/
 client/export_presets.cfg
 *.translation
+
+# Map tile pipeline -- regenerable scratch data, not source
+map_pipeline/*.osm.pbf
+map_pipeline/*.mbtiles
+map_pipeline/run.log
+map_pipeline/planetiler-profile/target/
+map_pipeline/planetiler-profile/dependency-reduced-pom.xml
