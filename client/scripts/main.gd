@@ -5,6 +5,7 @@ const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real 
 const PROXIMITY_RADIUS_METERS := 25.0
 
 @onready var camera: Camera3D = $Camera3D
+@onready var ground: Node3D = $Ground
 @onready var player_marker: Node3D = $PlayerMarker
 @onready var landmark_markers: Node3D = $LandmarkMarkers
 @onready var landmark_display: CanvasLayer = $LandmarkDisplay
@@ -28,6 +29,12 @@ func _process(delta: float) -> void:
 	_handle_movement_input(delta)
 	player_marker.position = GeoProjection.to_local(DevLocation.current_lat, DevLocation.current_lng)
 	camera.update_around(player_marker.global_position)
+	# Ground is a single static placeholder plane, not per-tile geometry
+	# like roads/water -- recenter it on the player each frame so its
+	# fixed size never runs out relative to wherever the player actually
+	# roams. A real fix (ground as part of the tile system) can replace
+	# this once habitat/land-cover rendering lands.
+	ground.position = Vector3(player_marker.position.x, 0.0, player_marker.position.z)
 	_check_proximity()
 
 
