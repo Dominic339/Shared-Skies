@@ -167,10 +167,9 @@ func _spawn_card_holders(slot_count: int) -> void:
 		var card := ProfileCardScene.instantiate()
 		holder.add_child(card)
 		# The holder is a hollow pocket (open-top scoop), tilted forward.
-		# Dialing in by feel now that direction is confirmed: less
-		# backward than the last attempt, plus raising it so more of the
-		# card peeks up out of the pocket.
-		card.position = Vector3(-0.008, 0.02, 0)
+		# Dialing in by feel now that direction is confirmed: a bit more
+		# forward and up than the last attempt.
+		card.position = Vector3(-0.003, 0.03, 0)
 
 
 func set_in_range(value: bool) -> void:
