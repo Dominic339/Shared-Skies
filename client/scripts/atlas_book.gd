@@ -58,9 +58,10 @@ func _ready() -> void:
 
 # Recursively replaces each surface's imported material with the toon
 # shader using a flat tint (these models have no real authored color to
-# preserve), but carries over the original normal map -- if any -- and
-# its UV transform, so baked engraving/relief detail (the actual cover
-# designs) still reads correctly instead of being discarded.
+# preserve), but carries over the original base color texture (the
+# printed cover design) and normal map -- if either is present -- along
+# with each one's own UV transform, so the actual cover art still reads
+# correctly instead of being discarded.
 func _apply_toon_material(node: Node, tint: Color) -> void:
 	if node is MeshInstance3D:
 		var mesh_instance := node as MeshInstance3D
@@ -72,6 +73,15 @@ func _apply_toon_material(node: Node, tint: Color) -> void:
 			material.set_shader_parameter("use_vertex_color", false)
 			material.set_shader_parameter("light_bands", 3)
 			material.set_shader_parameter("band_softness", 0.15)
+			if original and original.albedo_texture:
+				material.set_shader_parameter("use_albedo_texture", true)
+				material.set_shader_parameter("albedo_texture", original.albedo_texture)
+				material.set_shader_parameter(
+					"albedo_uv_offset", Vector2(original.uv1_offset.x, original.uv1_offset.y)
+				)
+				material.set_shader_parameter(
+					"albedo_uv_scale", Vector2(original.uv1_scale.x, original.uv1_scale.y)
+				)
 			if original and original.normal_enabled and original.normal_texture:
 				material.set_shader_parameter("use_normal_texture", true)
 				material.set_shader_parameter("normal_texture", original.normal_texture)

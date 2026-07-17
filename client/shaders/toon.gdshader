@@ -26,6 +26,14 @@ uniform bool use_vertex_color = true;
 uniform int light_bands : hint_range(1, 6) = 3;
 uniform float band_softness : hint_range(0.01, 0.5) = 0.15;
 
+// Optional base color texture -- e.g. a printed/stamped design (a book
+// cover's title and border art) multiplied on top of albedo_tint, same
+// UV-transform-reproduction reasoning as the normal texture below.
+uniform sampler2D albedo_texture : source_color;
+uniform bool use_albedo_texture = false;
+uniform vec2 albedo_uv_offset = vec2(0.0);
+uniform vec2 albedo_uv_scale = vec2(1.0);
+
 // Optional normal map -- lets baked relief/engraving detail (e.g. an
 // embossed book cover design) still read correctly under the banded
 // lighting response, instead of being discarded whenever this shader
@@ -45,6 +53,10 @@ void fragment() {
 	vec4 base_color = albedo_tint;
 	if (use_vertex_color) {
 		base_color *= COLOR;
+	}
+	if (use_albedo_texture) {
+		vec2 transformed_uv = UV * albedo_uv_scale + albedo_uv_offset;
+		base_color *= texture(albedo_texture, transformed_uv);
 	}
 	ALBEDO = base_color.rgb;
 
