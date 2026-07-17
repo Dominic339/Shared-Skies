@@ -26,12 +26,32 @@ uniform bool use_vertex_color = true;
 uniform int light_bands : hint_range(1, 6) = 3;
 uniform float band_softness : hint_range(0.01, 0.5) = 0.15;
 
+// Optional normal map -- lets baked relief/engraving detail (e.g. an
+// embossed book cover design) still read correctly under the banded
+// lighting response, instead of being discarded whenever this shader
+// replaces a model's imported material (as _apply_toon_demo_material-style
+// code does to apply the tint/vertex-color system above). uv_offset/
+// uv_scale reproduce whatever UV transform (KHR_texture_transform) the
+// original imported material had for this texture -- taking over the
+// material means Godot's automatic handling of that transform no longer
+// applies, so it has to be reproduced here from the original material's
+// own uv1_offset/uv1_scale.
+uniform sampler2D normal_texture : hint_normal;
+uniform bool use_normal_texture = false;
+uniform vec2 normal_uv_offset = vec2(0.0);
+uniform vec2 normal_uv_scale = vec2(1.0);
+
 void fragment() {
 	vec4 base_color = albedo_tint;
 	if (use_vertex_color) {
 		base_color *= COLOR;
 	}
 	ALBEDO = base_color.rgb;
+
+	if (use_normal_texture) {
+		vec2 transformed_uv = UV * normal_uv_scale + normal_uv_offset;
+		NORMAL_MAP = texture(normal_texture, transformed_uv).rgb;
+	}
 }
 
 void light() {

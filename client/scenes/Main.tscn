@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/landmark_display_ui.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/map_tile_loader.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/atlas_ui.gd" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/AtlasBook.tscn" id="7"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
@@ -46,6 +47,9 @@ surface_material_override/0 = SubResource("StandardMaterial3D_2")
 
 [node name="MapTiles" type="Node3D" parent="."]
 script = ExtResource("5")
+
+[node name="AtlasBookTest" parent="." instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1, 2)
 
 [node name="DevUI" type="CanvasLayer" parent="."]
 script = ExtResource("2")
