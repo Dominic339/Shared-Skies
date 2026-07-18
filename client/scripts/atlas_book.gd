@@ -76,14 +76,20 @@ func _apply_toon_material(node: Node, tint: Color) -> void:
 			if original and original.albedo_texture:
 				material.set_shader_parameter("use_albedo_texture", true)
 				material.set_shader_parameter("albedo_texture", original.albedo_texture)
-				# Deliberately NOT reapplying original.uv1_offset/uv1_scale here
-				# (contrast with the normal_texture handling below) -- doing so
-				# shifted the design off-center, which means Godot's glTF
-				# import is very likely already applying KHR_texture_transform
-				# itself (e.g. baked into the mesh's own UV data) before this
-				# code ever runs, and reapplying it here was double-transforming.
-				# Sampling the raw UV directly (the shader's default identity
-				# offset/scale) matches what's actually centered correctly.
+				# Reapplying original.uv1_offset/uv1_scale IS needed -- without
+				# it the design fills the whole face edge-to-edge with no
+				# leather border, which doesn't match the proportions modeled
+				# in Blender. The earlier "off-center" look wasn't actually a
+				# wrong transform -- it was the texture repeating/tiling
+				# outside the shrunk region instead of clamping to a solid
+				# edge, which the shader's new repeat_disable hint on
+				# albedo_texture now prevents.
+				material.set_shader_parameter(
+					"albedo_uv_offset", Vector2(original.uv1_offset.x, original.uv1_offset.y)
+				)
+				material.set_shader_parameter(
+					"albedo_uv_scale", Vector2(original.uv1_scale.x, original.uv1_scale.y)
+				)
 			if original and original.normal_enabled and original.normal_texture:
 				material.set_shader_parameter("use_normal_texture", true)
 				material.set_shader_parameter("normal_texture", original.normal_texture)

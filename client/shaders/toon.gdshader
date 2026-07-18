@@ -29,7 +29,7 @@ uniform float band_softness : hint_range(0.01, 0.5) = 0.15;
 // Optional base color texture -- e.g. a printed/stamped design (a book
 // cover's title and border art) multiplied on top of albedo_tint, same
 // UV-transform-reproduction reasoning as the normal texture below.
-uniform sampler2D albedo_texture : source_color;
+uniform sampler2D albedo_texture : source_color, repeat_disable;
 uniform bool use_albedo_texture = false;
 uniform vec2 albedo_uv_offset = vec2(0.0);
 uniform vec2 albedo_uv_scale = vec2(1.0);
