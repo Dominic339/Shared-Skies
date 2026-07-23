@@ -96,3 +96,18 @@ func _on_details_close_pressed() -> void:
 func _on_close_pressed() -> void:
 	hide()
 	closed.emit()
+
+
+# Closes whichever layer is currently on top -- the details panel first
+# if it's open, otherwise the whole Atlas. Used by main.gd's global Escape
+# handler so this is always closeable regardless of whether its own Close
+# button is reachable on screen (a real layout bug already found once).
+# Returns whether it actually closed anything.
+func close_topmost() -> bool:
+	if not visible:
+		return false
+	if details_panel.visible:
+		_on_details_close_pressed()
+	else:
+		_on_close_pressed()
+	return true

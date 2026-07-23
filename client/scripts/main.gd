@@ -56,6 +56,18 @@ func _ready() -> void:
 	await _load_existing_visits()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	# Global Escape/back handler -- every menu should be closeable this
+	# way regardless of whether its own Close button happens to be
+	# reachable on screen (a real layout bug already found once on the
+	# Atlas panel). Tries the topmost/most-recently-opened one first.
+	if event.is_action_pressed("ui_cancel"):
+		if atlas_ui.close_topmost():
+			return
+		if landmark_display.close_topmost():
+			return
+
+
 func _process(delta: float) -> void:
 	_handle_movement_input(delta)
 	player_marker.position = GeoProjection.to_local(DevLocation.current_lat, DevLocation.current_lng)

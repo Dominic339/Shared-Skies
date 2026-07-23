@@ -53,3 +53,12 @@ func _on_close_pressed() -> void:
 	hide()
 	_marker = null
 	closed.emit()
+
+
+# Used by main.gd's global Escape handler. Returns whether it actually
+# closed anything.
+func close_topmost() -> bool:
+	if not visible:
+		return false
+	_on_close_pressed()
+	return true
