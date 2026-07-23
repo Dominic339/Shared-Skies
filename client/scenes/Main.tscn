@@ -156,5 +156,8 @@ text = "LM000000"
 [node name="VisitedLabel" type="Label" parent="AtlasUI/DetailsPanel/VBoxContainer"]
 text = "Not yet visited"
 
+[node name="PostcardLabel" type="Label" parent="AtlasUI/DetailsPanel/VBoxContainer"]
+text = "No postcard yet"
+
 [node name="CloseButton" type="Button" parent="AtlasUI/DetailsPanel/VBoxContainer"]
 text = "Close"

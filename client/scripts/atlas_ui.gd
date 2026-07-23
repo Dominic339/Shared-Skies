@@ -17,6 +17,7 @@ signal closed
 @onready var details_category_label: Label = $DetailsPanel/VBoxContainer/CategoryLabel
 @onready var details_code_label: Label = $DetailsPanel/VBoxContainer/CodeLabel
 @onready var details_visited_label: Label = $DetailsPanel/VBoxContainer/VisitedLabel
+@onready var details_postcard_label: Label = $DetailsPanel/VBoxContainer/PostcardLabel
 @onready var details_close_button: Button = $DetailsPanel/VBoxContainer/CloseButton
 
 const VISITED_COLOR := Color(1, 1, 1)
@@ -46,7 +47,7 @@ func _load_entries() -> void:
 
 	var rows: Array = await SupabaseClient.get_table(
 		"atlas_view",
-		"select=landmark_id,code,name,category,community_name,first_visited_at,visited"
+		"select=landmark_id,code,name,category,community_name,first_visited_at,visited,has_postcard"
 		+ "&order=community_name,name"
 	)
 
@@ -82,6 +83,9 @@ func _on_entry_pressed(row: Dictionary) -> void:
 		details_visited_label.text = "First visited: %s" % row.get("first_visited_at", "")
 	else:
 		details_visited_label.text = "Not yet visited"
+	details_postcard_label.text = (
+		"Postcard collected" if row.get("has_postcard", false) else "No postcard yet"
+	)
 	details_panel.show()
 
 
