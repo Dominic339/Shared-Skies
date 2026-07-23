@@ -74,6 +74,9 @@ placeholder_text = "Longitude"
 [node name="SetButton" type="Button" parent="DevUI/Panel/VBoxContainer"]
 text = "Set Position"
 
+[node name="HideButton" type="Button" parent="DevUI/Panel/VBoxContainer"]
+text = "Hide"
+
 [node name="LandmarkDisplay" type="CanvasLayer" parent="."]
 script = ExtResource("4")
 
@@ -126,7 +129,6 @@ text = "Atlas"
 text = "Landmarks visited: 0"
 
 [node name="ScrollContainer" type="ScrollContainer" parent="AtlasUI/Panel/VBoxContainer"]
-custom_minimum_size = Vector2(0, 900)
 size_flags_vertical = 3
 
 [node name="EntriesContainer" type="VBoxContainer" parent="AtlasUI/Panel/VBoxContainer/ScrollContainer"]
