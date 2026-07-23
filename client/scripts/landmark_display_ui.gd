@@ -13,6 +13,7 @@ const SCREEN_MARGIN_ABOVE_SIGN := 40.0
 @onready var name_label: Label = $Panel/VBoxContainer/NameLabel
 @onready var category_label: Label = $Panel/VBoxContainer/CategoryLabel
 @onready var code_label: Label = $Panel/VBoxContainer/CodeLabel
+@onready var card_slots_container: VBoxContainer = $Panel/VBoxContainer/CardSlotsContainer
 @onready var close_button: Button = $Panel/VBoxContainer/CloseButton
 
 var _camera: Camera3D = null
@@ -32,6 +33,7 @@ func show_landmark(marker: LandmarkMarker, camera: Camera3D) -> void:
 	code_label.text = marker.code
 	show()
 	_update_position()
+	await _load_card_slots()
 
 
 func _process(_delta: float) -> void:
@@ -47,6 +49,104 @@ func _update_position() -> void:
 	var screen_point := _camera.unproject_position(anchor)
 	var target_bottom_y := screen_point.y - SCREEN_MARGIN_ABOVE_SIGN
 	panel.position = Vector2(screen_point.x - panel.size.x / 2.0, target_bottom_y - panel.size.y)
+
+
+const OWN_CARD_COLOR := Color(1, 0.85, 0.3)
+const COLLECTED_COLOR := Color(0.45, 0.45, 0.45)
+
+
+# Rebuilds the card-holder rows from scratch every time the panel opens
+# (rather than diffing) -- slot occupancy changes from OTHER players too
+# (someone else leaving/collecting), so a stale cached view would be
+# actively wrong, and there are only ever a handful of slots per Landmark.
+func _load_card_slots() -> void:
+	for child in card_slots_container.get_children():
+		child.queue_free()
+
+	if _marker == null:
+		return
+
+	var rows: Array = await SupabaseClient.get_table(
+		"profile_card_slots_view",
+		(
+			"select=slot_id,landmark_id,slot_index,placement_id,placed_by,"
+			+ "placed_by_display_name,remaining_copies,occupied,is_own_card,already_collected"
+			+ "&landmark_id=eq.%s&order=slot_index" % _marker.landmark_id
+		)
+	)
+
+	# A wayfinder may only have one active placement per Landmark (enforced
+	# DB-side too, see profile_card_placements_active_landmark_idx) -- if
+	# any slot already carries their card, every empty slot's "Leave My
+	# Card" button should be disabled rather than letting the request round
+	# -trip just to be rejected by RLS/the unique index.
+	var already_placed_here := rows.any(func(r: Dictionary) -> bool: return r.get("is_own_card", false))
+
+	for row: Dictionary in rows:
+		var row_box := HBoxContainer.new()
+		var state_label := Label.new()
+		state_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_box.add_child(state_label)
+
+		var occupied: bool = row.get("occupied", false)
+		if not occupied:
+			state_label.text = "Slot %d: empty" % (row.get("slot_index", 0) + 1)
+			var leave_button := Button.new()
+			leave_button.text = "Leave My Card"
+			leave_button.disabled = already_placed_here or not _marker.in_range
+			leave_button.pressed.connect(_on_leave_card_pressed.bind(row.get("slot_id", "")))
+			row_box.add_child(leave_button)
+		elif row.get("is_own_card", false):
+			state_label.text = "Slot %d: your card (%d left)" % [
+				row.get("slot_index", 0) + 1, row.get("remaining_copies", 0)
+			]
+			state_label.modulate = OWN_CARD_COLOR
+		else:
+			var placer_name: String = row.get("placed_by_display_name", "a wayfinder")
+			var collected: bool = row.get("already_collected", false)
+			state_label.text = "Slot %d: %s's card%s" % [
+				row.get("slot_index", 0) + 1, placer_name, " (collected)" if collected else ""
+			]
+			if collected:
+				state_label.modulate = COLLECTED_COLOR
+			else:
+				var collect_button := Button.new()
+				collect_button.text = "Collect"
+				collect_button.disabled = not _marker.in_range
+				collect_button.pressed.connect(_on_collect_card_pressed.bind(row.get("placement_id", "")))
+				row_box.add_child(collect_button)
+
+		card_slots_container.add_child(row_box)
+
+	# The panel's rect is otherwise fixed (authored in Main.tscn, not
+	# inside a layout Container that would auto-fit it) -- reset_size()
+	# recomputes it from the children's actual minimum size now that the
+	# slot count is known, instead of a hardcoded box that's either too
+	# cramped for a Landmark with more slots or wastefully empty for one
+	# with fewer. Same overflow failure mode the Atlas panel's CloseButton
+	# hit earlier, avoided here by not hardcoding a height at all.
+	panel.reset_size()
+	_update_position()
+
+
+func _on_leave_card_pressed(slot_id: String) -> void:
+	var row := await SupabaseClient.insert_row("profile_card_placements", {
+		"slot_id": slot_id,
+		"placed_by": SupabaseClient.user_id,
+	})
+	if row.is_empty():
+		print("Failed to leave card in slot %s" % slot_id)
+	await _load_card_slots()
+
+
+func _on_collect_card_pressed(placement_id: String) -> void:
+	var row := await SupabaseClient.insert_row("profile_card_collections", {
+		"placement_id": placement_id,
+		"collected_by": SupabaseClient.user_id,
+	})
+	if row.is_empty():
+		print("Failed to collect card for placement %s" % placement_id)
+	await _load_card_slots()
 
 
 func _on_close_pressed() -> void:

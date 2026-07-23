@@ -36,6 +36,8 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var atlas_ui: CanvasLayer = $AtlasUI
 @onready var postcards_button: Button = $PostcardsButton/Button
 @onready var postcards_ui: CanvasLayer = $PostcardsUI
+@onready var profile_cards_button: Button = $ProfileCardsButton/Button
+@onready var profile_cards_ui: CanvasLayer = $ProfileCardsUI
 
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
@@ -50,6 +52,7 @@ func _ready() -> void:
 	landmark_display.closed.connect(_on_landmark_display_closed)
 	atlas_button.pressed.connect(_on_atlas_button_pressed)
 	postcards_button.pressed.connect(_on_postcards_button_pressed)
+	profile_cards_button.pressed.connect(_on_profile_cards_button_pressed)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -85,6 +88,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if atlas_ui.close_topmost():
 			return
 		if postcards_ui.close_topmost():
+			return
+		if profile_cards_ui.close_topmost():
 			return
 		if landmark_display.close_topmost():
 			return
@@ -221,6 +226,10 @@ func _on_atlas_button_pressed() -> void:
 
 func _on_postcards_button_pressed() -> void:
 	postcards_ui.show_postcards()
+
+
+func _on_profile_cards_button_pressed() -> void:
+	profile_cards_ui.show_profile_cards()
 
 
 func _record_visit(marker: LandmarkMarker) -> void:
