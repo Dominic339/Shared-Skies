@@ -58,6 +58,23 @@ func _ready() -> void:
 	await _load_landmarks()
 	await _load_existing_visits()
 
+	# Connected only now, after the initial load above completes -- fires
+	# on a later re-authentication (a dev test-account switch mid-session),
+	# refreshing per-account visited state. Landmarks themselves don't
+	# need re-fetching, they're the same public data for everyone.
+	# Deliberately not connected any earlier: this same signal is also
+	# what the await above resumes on, and firing this handler against the
+	# still-empty markers_by_landmark_id before _load_landmarks() has even
+	# run would silently do nothing.
+	SupabaseClient.authenticated.connect(_on_supabase_reauthenticated)
+
+
+func _on_supabase_reauthenticated() -> void:
+	print("Signed in anonymously as %s" % SupabaseClient.user_id)
+	for marker: LandmarkMarker in markers_by_landmark_id.values():
+		marker.set_visited(false)
+	await _load_existing_visits()
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Global Escape/back handler -- every menu should be closeable this

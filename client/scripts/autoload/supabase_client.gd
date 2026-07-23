@@ -23,6 +23,11 @@ var access_token: String = ""
 var refresh_token: String = ""
 var user_id: String = ""
 var is_ready: bool = false
+# Dev-only: lets multiple anonymous test accounts be switched between
+# under different labels (see switch_to_test_account) without clearing
+# session data -- needed to test player-to-player features like profile
+# card placement/collection, which require two separate identities.
+var current_test_label: String = "default"
 
 
 func _ready() -> void:
@@ -30,9 +35,24 @@ func _ready() -> void:
 	# launch mints a brand new anonymous identity and silently orphans
 	# whatever the player collected last time. Try to resume a saved
 	# session first; only mint a fresh anonymous user if that fails.
-	var saved_refresh_token := _load_saved_refresh_token()
+	var saved_refresh_token := _load_saved_refresh_token(current_test_label)
 	if saved_refresh_token != "":
 		if await _refresh_session(saved_refresh_token):
+			return
+	await _sign_in_anonymously()
+
+
+# Dev-only: switches to a separate anonymous account under `label`,
+# minting a brand new one the first time that label is used and resuming
+# it on every later switch back -- lets two-player features be tested by
+# swapping identities in the same running game instead of reinstalling or
+# clearing session data.
+func switch_to_test_account(label: String) -> void:
+	current_test_label = label
+	is_ready = false
+	var saved := _load_saved_refresh_token(label)
+	if saved != "":
+		if await _refresh_session(saved):
 			return
 	await _sign_in_anonymously()
 
@@ -55,7 +75,7 @@ func _apply_session_response(response: Dictionary) -> bool:
 	access_token = response["access_token"]
 	refresh_token = response["refresh_token"]
 	user_id = response.get("user", {}).get("id", "")
-	_save_refresh_token(refresh_token)
+	_save_refresh_token(current_test_label, refresh_token)
 	is_ready = true
 	authenticated.emit()
 	return true
@@ -126,19 +146,41 @@ func _request(url: String, headers: PackedStringArray, method: HTTPClient.Method
 	return parsed
 
 
-func _load_saved_refresh_token() -> String:
+func _load_saved_refresh_token(label: String) -> String:
 	if not FileAccess.file_exists(SESSION_PATH):
 		return ""
 	var file := FileAccess.open(SESSION_PATH, FileAccess.READ)
 	if file == null:
 		return ""
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	if parsed is Dictionary and parsed.has("refresh_token"):
-		return parsed["refresh_token"]
+	if parsed is Dictionary:
+		# Pre-multi-account format: a single top-level refresh_token,
+		# always the "default" label.
+		if label == "default" and parsed.has("refresh_token"):
+			return parsed["refresh_token"]
+		var tokens: Variant = parsed.get("tokens", {})
+		if tokens is Dictionary and tokens.has(label):
+			return tokens[label]
 	return ""
 
 
-func _save_refresh_token(token: String) -> void:
+func _save_refresh_token(label: String, token: String) -> void:
+	# Preserves whatever other labels' tokens already exist (including a
+	# pre-multi-account "default" token) instead of clobbering them --
+	# switching to a new test account shouldn't lose the ability to
+	# switch back to ones already saved.
+	var tokens := {}
+	if FileAccess.file_exists(SESSION_PATH):
+		var file := FileAccess.open(SESSION_PATH, FileAccess.READ)
+		if file != null:
+			var parsed: Variant = JSON.parse_string(file.get_as_text())
+			if parsed is Dictionary:
+				if parsed.has("refresh_token"):
+					tokens["default"] = parsed["refresh_token"]
+				var existing: Variant = parsed.get("tokens", {})
+				if existing is Dictionary:
+					tokens.merge(existing, true)
+	tokens[label] = token
 	var file := FileAccess.open(SESSION_PATH, FileAccess.WRITE)
 	if file != null:
-		file.store_string(JSON.stringify({"refresh_token": token}))
+		file.store_string(JSON.stringify({"tokens": tokens}))
