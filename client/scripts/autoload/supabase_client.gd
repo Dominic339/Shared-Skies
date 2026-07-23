@@ -171,9 +171,9 @@ func _save_refresh_token(label: String, token: String) -> void:
 	# switch back to ones already saved.
 	var tokens := {}
 	if FileAccess.file_exists(SESSION_PATH):
-		var file := FileAccess.open(SESSION_PATH, FileAccess.READ)
-		if file != null:
-			var parsed: Variant = JSON.parse_string(file.get_as_text())
+		var read_file := FileAccess.open(SESSION_PATH, FileAccess.READ)
+		if read_file != null:
+			var parsed: Variant = JSON.parse_string(read_file.get_as_text())
 			if parsed is Dictionary:
 				if parsed.has("refresh_token"):
 					tokens["default"] = parsed["refresh_token"]
@@ -181,6 +181,6 @@ func _save_refresh_token(label: String, token: String) -> void:
 				if existing is Dictionary:
 					tokens.merge(existing, true)
 	tokens[label] = token
-	var file := FileAccess.open(SESSION_PATH, FileAccess.WRITE)
-	if file != null:
-		file.store_string(JSON.stringify({"tokens": tokens}))
+	var write_file := FileAccess.open(SESSION_PATH, FileAccess.WRITE)
+	if write_file != null:
+		write_file.store_string(JSON.stringify({"tokens": tokens}))
