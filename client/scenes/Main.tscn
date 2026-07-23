@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://scripts/postcards_ui.gd" id="8"]
 [ext_resource type="Script" path="res://scripts/profile_cards_ui.gd" id="9"]
 [ext_resource type="Script" path="res://scripts/waymarks_ui.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/community_board_ui.gd" id="11"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
@@ -149,6 +150,15 @@ offset_top = 160.0
 offset_right = 1064.0
 offset_bottom = 200.0
 text = "Waymarks"
+
+[node name="CommunityBoardButton" type="CanvasLayer" parent="."]
+
+[node name="Button" type="Button" parent="CommunityBoardButton"]
+offset_left = 900.0
+offset_top = 208.0
+offset_right = 1064.0
+offset_bottom = 248.0
+text = "Community Board"
 
 [node name="AtlasUI" type="CanvasLayer" parent="."]
 script = ExtResource("6")
@@ -346,4 +356,28 @@ text = "Dev Grant"
 text = "Dev Spend"
 
 [node name="CloseButton" type="Button" parent="WaymarksUI/Panel/VBoxContainer"]
+text = "Close"
+
+[node name="CommunityBoardUI" type="CanvasLayer" parent="."]
+script = ExtResource("11")
+
+[node name="Panel" type="PanelContainer" parent="CommunityBoardUI"]
+offset_left = 60.0
+offset_top = 220.0
+offset_right = 1020.0
+offset_bottom = 1400.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CommunityBoardUI/Panel"]
+
+[node name="TitleLabel" type="Label" parent="CommunityBoardUI/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 32
+text = "Community Board"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="CommunityBoardUI/Panel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="EntriesContainer" type="VBoxContainer" parent="CommunityBoardUI/Panel/VBoxContainer/ScrollContainer"]
+size_flags_horizontal = 3
+
+[node name="CloseButton" type="Button" parent="CommunityBoardUI/Panel/VBoxContainer"]
 text = "Close"
