@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://scripts/waymarks_ui.gd" id="10"]
 [ext_resource type="Script" path="res://scripts/community_board_ui.gd" id="11"]
 [ext_resource type="Script" path="res://scripts/mailbox_ui.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/museum_ui.gd" id="13"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
@@ -169,6 +170,15 @@ offset_top = 256.0
 offset_right = 1064.0
 offset_bottom = 296.0
 text = "Mailbox"
+
+[node name="MuseumButton" type="CanvasLayer" parent="."]
+
+[node name="Button" type="Button" parent="MuseumButton"]
+offset_left = 900.0
+offset_top = 304.0
+offset_right = 1064.0
+offset_bottom = 344.0
+text = "Museum"
 
 [node name="AtlasUI" type="CanvasLayer" parent="."]
 script = ExtResource("6")
@@ -425,4 +435,46 @@ size_flags_vertical = 3
 size_flags_horizontal = 3
 
 [node name="CloseButton" type="Button" parent="MailboxUI/Panel/VBoxContainer"]
+text = "Close"
+
+[node name="MuseumUI" type="CanvasLayer" parent="."]
+script = ExtResource("13")
+
+[node name="Panel" type="PanelContainer" parent="MuseumUI"]
+offset_left = 60.0
+offset_top = 220.0
+offset_right = 1020.0
+offset_bottom = 1400.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MuseumUI/Panel"]
+
+[node name="TitleLabel" type="Label" parent="MuseumUI/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 32
+text = "Museum"
+
+[node name="CommunityOption" type="OptionButton" parent="MuseumUI/Panel/VBoxContainer"]
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MuseumUI/Panel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="EntriesContainer" type="VBoxContainer" parent="MuseumUI/Panel/VBoxContainer/ScrollContainer"]
+size_flags_horizontal = 3
+
+[node name="DonateControls" type="HBoxContainer" parent="MuseumUI/Panel/VBoxContainer"]
+
+[node name="ItemOption" type="OptionButton" parent="MuseumUI/Panel/VBoxContainer/DonateControls"]
+size_flags_horizontal = 3
+
+[node name="DonateButton" type="Button" parent="MuseumUI/Panel/VBoxContainer/DonateControls"]
+text = "Donate"
+
+[node name="DevControls" type="HBoxContainer" parent="MuseumUI/Panel/VBoxContainer"]
+
+[node name="DevItemOption" type="OptionButton" parent="MuseumUI/Panel/VBoxContainer/DevControls"]
+size_flags_horizontal = 3
+
+[node name="DevGrantButton" type="Button" parent="MuseumUI/Panel/VBoxContainer/DevControls"]
+text = "Grant Test Item"
+
+[node name="CloseButton" type="Button" parent="MuseumUI/Panel/VBoxContainer"]
 text = "Close"
