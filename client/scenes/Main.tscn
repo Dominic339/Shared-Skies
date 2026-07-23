@@ -79,11 +79,10 @@ text = "Set Position"
 [node name="UserLabel" type="Label" parent="DevUI/Panel/VBoxContainer"]
 text = "User: --"
 
-[node name="TestUserAButton" type="Button" parent="DevUI/Panel/VBoxContainer"]
-text = "Test User A"
+[node name="TestUserOption" type="OptionButton" parent="DevUI/Panel/VBoxContainer"]
 
-[node name="TestUserBButton" type="Button" parent="DevUI/Panel/VBoxContainer"]
-text = "Test User B"
+[node name="TestUserSwitchButton" type="Button" parent="DevUI/Panel/VBoxContainer"]
+text = "Switch"
 
 [node name="HideButton" type="Button" parent="DevUI/Panel/VBoxContainer"]
 text = "Hide"
