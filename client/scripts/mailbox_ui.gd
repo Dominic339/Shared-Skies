@@ -77,6 +77,11 @@ func _load_mail() -> void:
 			]
 			history_container.add_child(entry)
 
+	if rows.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No mail yet -- mail a postcard from the Postcards screen to get started."
+		history_container.add_child(empty_label)
+
 	panel.reset_size()
 
 
