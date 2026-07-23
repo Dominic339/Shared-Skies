@@ -34,6 +34,8 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var landmark_display: CanvasLayer = $LandmarkDisplay
 @onready var atlas_button: Button = $AtlasButton/Button
 @onready var atlas_ui: CanvasLayer = $AtlasUI
+@onready var postcards_button: Button = $PostcardsButton/Button
+@onready var postcards_ui: CanvasLayer = $PostcardsUI
 
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
@@ -47,6 +49,7 @@ func _ready() -> void:
 	get_viewport().physics_object_picking = true
 	landmark_display.closed.connect(_on_landmark_display_closed)
 	atlas_button.pressed.connect(_on_atlas_button_pressed)
+	postcards_button.pressed.connect(_on_postcards_button_pressed)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -63,6 +66,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Atlas panel). Tries the topmost/most-recently-opened one first.
 	if event.is_action_pressed("ui_cancel"):
 		if atlas_ui.close_topmost():
+			return
+		if postcards_ui.close_topmost():
 			return
 		if landmark_display.close_topmost():
 			return
@@ -195,6 +200,10 @@ func _on_landmark_display_closed() -> void:
 
 func _on_atlas_button_pressed() -> void:
 	atlas_ui.show_atlas()
+
+
+func _on_postcards_button_pressed() -> void:
+	postcards_ui.show_postcards()
 
 
 func _record_visit(marker: LandmarkMarker) -> void:
