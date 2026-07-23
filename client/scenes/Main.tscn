@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/AtlasBook.tscn" id="7"]
 [ext_resource type="Script" path="res://scripts/postcards_ui.gd" id="8"]
 [ext_resource type="Script" path="res://scripts/profile_cards_ui.gd" id="9"]
+[ext_resource type="Script" path="res://scripts/waymarks_ui.gd" id="10"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
@@ -139,6 +140,15 @@ offset_top = 112.0
 offset_right = 1064.0
 offset_bottom = 152.0
 text = "Profile Cards"
+
+[node name="WaymarksButton" type="CanvasLayer" parent="."]
+
+[node name="Button" type="Button" parent="WaymarksButton"]
+offset_left = 900.0
+offset_top = 160.0
+offset_right = 1064.0
+offset_bottom = 200.0
+text = "Waymarks"
 
 [node name="AtlasUI" type="CanvasLayer" parent="."]
 script = ExtResource("6")
@@ -291,4 +301,49 @@ text = "From: --"
 text = "Collected: --"
 
 [node name="CloseButton" type="Button" parent="ProfileCardsUI/DetailsPanel/VBoxContainer"]
+text = "Close"
+
+[node name="WaymarksUI" type="CanvasLayer" parent="."]
+script = ExtResource("10")
+
+[node name="Panel" type="PanelContainer" parent="WaymarksUI"]
+offset_left = 60.0
+offset_top = 220.0
+offset_right = 1020.0
+offset_bottom = 1400.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="WaymarksUI/Panel"]
+
+[node name="TitleLabel" type="Label" parent="WaymarksUI/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 32
+text = "Waymarks"
+
+[node name="TotalLabel" type="Label" parent="WaymarksUI/Panel/VBoxContainer"]
+text = "Waymarks: 0 total"
+
+[node name="SilverLabel" type="Label" parent="WaymarksUI/Panel/VBoxContainer"]
+text = "Silver -- 0 earned"
+
+[node name="GoldLabel" type="Label" parent="WaymarksUI/Panel/VBoxContainer"]
+text = "Gold -- 0 purchased"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="WaymarksUI/Panel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="HistoryContainer" type="VBoxContainer" parent="WaymarksUI/Panel/VBoxContainer/ScrollContainer"]
+size_flags_horizontal = 3
+
+[node name="DevControls" type="HBoxContainer" parent="WaymarksUI/Panel/VBoxContainer"]
+
+[node name="DevAmountEdit" type="LineEdit" parent="WaymarksUI/Panel/VBoxContainer/DevControls"]
+placeholder_text = "Amount"
+size_flags_horizontal = 3
+
+[node name="DevGrantButton" type="Button" parent="WaymarksUI/Panel/VBoxContainer/DevControls"]
+text = "Dev Grant"
+
+[node name="DevSpendButton" type="Button" parent="WaymarksUI/Panel/VBoxContainer/DevControls"]
+text = "Dev Spend"
+
+[node name="CloseButton" type="Button" parent="WaymarksUI/Panel/VBoxContainer"]
 text = "Close"

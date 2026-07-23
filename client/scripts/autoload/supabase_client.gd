@@ -120,6 +120,23 @@ func insert_row(table: String, data: Dictionary) -> Dictionary:
 	return result[0] if result is Array and result.size() > 0 else {}
 
 
+# Calls a Postgres function exposed via PostgREST's /rpc endpoint (e.g.
+# spend_waymarks) -- param dictionary keys must exactly match the SQL
+# function's own parameter names. Returns whatever the function returns
+# (a scalar like a uuid comes back as a bare JSON value, not wrapped in
+# an array the way table selects are), or an empty Dictionary on failure
+# -- same failure convention as insert_row, since _request already
+# collapses "rejected" and "network error" into that one shape.
+func call_rpc(function_name: String, params: Dictionary = {}) -> Variant:
+	var headers := [
+		"apikey: " + SUPABASE_ANON_KEY,
+		"Authorization: Bearer " + access_token,
+		"Content-Type: application/json",
+	]
+	var url := "%s/rest/v1/rpc/%s" % [SUPABASE_URL, function_name]
+	return await _request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(params))
+
+
 func _request(url: String, headers: PackedStringArray, method: HTTPClient.Method, body: String = "") -> Variant:
 	var http_request := HTTPRequest.new()
 	add_child(http_request)
