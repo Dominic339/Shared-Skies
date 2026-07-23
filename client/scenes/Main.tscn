@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/profile_cards_ui.gd" id="9"]
 [ext_resource type="Script" path="res://scripts/waymarks_ui.gd" id="10"]
 [ext_resource type="Script" path="res://scripts/community_board_ui.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/mailbox_ui.gd" id="12"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
@@ -160,6 +161,15 @@ offset_right = 1064.0
 offset_bottom = 248.0
 text = "Community Board"
 
+[node name="MailboxButton" type="CanvasLayer" parent="."]
+
+[node name="Button" type="Button" parent="MailboxButton"]
+offset_left = 900.0
+offset_top = 256.0
+offset_right = 1064.0
+offset_bottom = 296.0
+text = "Mailbox"
+
 [node name="AtlasUI" type="CanvasLayer" parent="."]
 script = ExtResource("6")
 
@@ -261,6 +271,15 @@ text = "season, weather, time of day"
 
 [node name="CollectedLabel" type="Label" parent="PostcardsUI/DetailsPanel/VBoxContainer"]
 text = "Collected: --"
+
+[node name="MailControls" type="VBoxContainer" parent="PostcardsUI/DetailsPanel/VBoxContainer"]
+
+[node name="RecipientOption" type="OptionButton" parent="PostcardsUI/DetailsPanel/VBoxContainer/MailControls"]
+
+[node name="MessageOption" type="OptionButton" parent="PostcardsUI/DetailsPanel/VBoxContainer/MailControls"]
+
+[node name="MailButton" type="Button" parent="PostcardsUI/DetailsPanel/VBoxContainer/MailControls"]
+text = "Mail"
 
 [node name="CloseButton" type="Button" parent="PostcardsUI/DetailsPanel/VBoxContainer"]
 text = "Close"
@@ -380,4 +399,30 @@ size_flags_vertical = 3
 size_flags_horizontal = 3
 
 [node name="CloseButton" type="Button" parent="CommunityBoardUI/Panel/VBoxContainer"]
+text = "Close"
+
+[node name="MailboxUI" type="CanvasLayer" parent="."]
+script = ExtResource("12")
+
+[node name="Panel" type="PanelContainer" parent="MailboxUI"]
+offset_left = 60.0
+offset_top = 220.0
+offset_right = 1020.0
+offset_bottom = 1400.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MailboxUI/Panel"]
+
+[node name="TitleLabel" type="Label" parent="MailboxUI/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 32
+text = "Mailbox"
+
+[node name="IncomingContainer" type="VBoxContainer" parent="MailboxUI/Panel/VBoxContainer"]
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MailboxUI/Panel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="HistoryContainer" type="VBoxContainer" parent="MailboxUI/Panel/VBoxContainer/ScrollContainer"]
+size_flags_horizontal = 3
+
+[node name="CloseButton" type="Button" parent="MailboxUI/Panel/VBoxContainer"]
 text = "Close"

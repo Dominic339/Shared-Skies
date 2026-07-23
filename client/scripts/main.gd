@@ -42,6 +42,8 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var waymarks_ui: CanvasLayer = $WaymarksUI
 @onready var community_board_button: Button = $CommunityBoardButton/Button
 @onready var community_board_ui: CanvasLayer = $CommunityBoardUI
+@onready var mailbox_button: Button = $MailboxButton/Button
+@onready var mailbox_ui: CanvasLayer = $MailboxUI
 
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
@@ -59,6 +61,7 @@ func _ready() -> void:
 	profile_cards_button.pressed.connect(_on_profile_cards_button_pressed)
 	waymarks_button.pressed.connect(_on_waymarks_button_pressed)
 	community_board_button.pressed.connect(_on_community_board_button_pressed)
+	mailbox_button.pressed.connect(_on_mailbox_button_pressed)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -100,6 +103,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if waymarks_ui.close_topmost():
 			return
 		if community_board_ui.close_topmost():
+			return
+		if mailbox_ui.close_topmost():
 			return
 		if landmark_display.close_topmost():
 			return
@@ -248,6 +253,10 @@ func _on_waymarks_button_pressed() -> void:
 
 func _on_community_board_button_pressed() -> void:
 	community_board_ui.show_board()
+
+
+func _on_mailbox_button_pressed() -> void:
+	mailbox_ui.show_mailbox()
 
 
 func _record_visit(marker: LandmarkMarker) -> void:
