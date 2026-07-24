@@ -71,8 +71,9 @@ func _load_progress(community_id: String) -> void:
 		var entry := Label.new()
 		var donated: bool = row.get("donated", false)
 		if donated:
-			entry.text = "✓ %s -- donated by %s" % [
-				row.get("item_name", ""), row.get("donor_display_name", "a wayfinder")
+			entry.text = "✓ %s -- donated by %s (%s)" % [
+				row.get("item_name", ""), row.get("donor_display_name", "a wayfinder"),
+				row.get("donated_at", "")
 			]
 		else:
 			entry.text = "○ %s" % row.get("item_name", "")
