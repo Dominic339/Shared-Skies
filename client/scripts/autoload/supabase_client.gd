@@ -28,6 +28,13 @@ var is_ready: bool = false
 # session data -- needed to test player-to-player features like profile
 # card placement/collection, which require two separate identities.
 var current_test_label: String = "default"
+# Set right before any failed request returns its empty-Dictionary
+# convention -- callers that want to react to a SPECIFIC expected
+# rejection (e.g. "this Community has already received this item") can
+# check this immediately after the call, rather than only getting a
+# blanket failure with no detail.
+var last_error_code: String = ""
+var last_error_message: String = ""
 
 
 func _ready() -> void:
@@ -155,9 +162,22 @@ func _request(url: String, headers: PackedStringArray, method: HTTPClient.Method
 	var parsed: Variant = JSON.parse_string(body_bytes.get_string_from_utf8())
 
 	if response_code >= 400 or parsed == null:
-		push_error("Supabase request failed (%d) at %s: %s" % [
-			response_code, url, body_bytes.get_string_from_utf8()
-		])
+		var error_body: Dictionary = parsed if parsed is Dictionary else {}
+		last_error_code = error_body.get("code", "")
+		last_error_message = error_body.get("message", "")
+		# P0001 is Postgres' default SQLSTATE for a plain "raise exception"
+		# inside one of our own plpgsql functions -- a deliberate, friendly
+		# rejection (wrong owner, already claimed, insufficient balance,
+		# already donated, etc.), not a bug. Everything else (syntax
+		# errors, column-count mismatches, network failures) still needs
+		# to shout via push_error, or a real crash gets lost in the noise
+		# of expected rejections.
+		if last_error_code == "P0001":
+			print("Rejected: %s" % last_error_message)
+		else:
+			push_error("Supabase request failed (%d) at %s: %s" % [
+				response_code, url, body_bytes.get_string_from_utf8()
+			])
 		return {}
 
 	return parsed

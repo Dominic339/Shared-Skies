@@ -17,6 +17,7 @@ signal closed
 @onready var donate_button: Button = $Panel/VBoxContainer/DonateControls/DonateButton
 @onready var dev_item_option: OptionButton = $Panel/VBoxContainer/DevControls/DevItemOption
 @onready var dev_grant_button: Button = $Panel/VBoxContainer/DevControls/DevGrantButton
+@onready var status_label: Label = $Panel/VBoxContainer/StatusLabel
 @onready var close_button: Button = $Panel/VBoxContainer/CloseButton
 
 var _community_ids: Array = []
@@ -33,6 +34,7 @@ func _ready() -> void:
 
 
 func show_museum() -> void:
+	status_label.text = ""
 	show()
 	await _load_communities()
 	await _load_donatable_items()
@@ -103,8 +105,14 @@ func _on_donate_pressed() -> void:
 		"p_community_id": community_id,
 	})
 	if result is Dictionary and result.is_empty():
-		print("Failed to donate item %s" % item_instance_id)
+		# A rejection like "this Community has already received a
+		# donation of this item" is an expected rule, not a crash --
+		# shown in-panel via SupabaseClient.last_error_message instead of
+		# just a console print, same distinction _request() now makes
+		# via last_error_code before deciding whether to push_error at all.
+		status_label.text = SupabaseClient.last_error_message
 	else:
+		status_label.text = ""
 		await _load_donatable_items()
 		await _load_progress(community_id)
 
@@ -134,8 +142,9 @@ func _on_dev_grant_pressed() -> void:
 		"p_item_definition_id": item_definition_id,
 	})
 	if result is Dictionary and result.is_empty():
-		print("Dev item grant failed -- account not allowlisted?")
+		status_label.text = SupabaseClient.last_error_message
 	else:
+		status_label.text = ""
 		await _load_donatable_items()
 
 

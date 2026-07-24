@@ -476,5 +476,8 @@ size_flags_horizontal = 3
 [node name="DevGrantButton" type="Button" parent="MuseumUI/Panel/VBoxContainer/DevControls"]
 text = "Grant Test Item"
 
+[node name="StatusLabel" type="Label" parent="MuseumUI/Panel/VBoxContainer"]
+text = ""
+
 [node name="CloseButton" type="Button" parent="MuseumUI/Panel/VBoxContainer"]
 text = "Close"
