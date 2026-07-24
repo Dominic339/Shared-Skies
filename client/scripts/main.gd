@@ -46,6 +46,8 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var mailbox_ui: CanvasLayer = $MailboxUI
 @onready var museum_button: Button = $MuseumButton/Button
 @onready var museum_ui: CanvasLayer = $MuseumUI
+@onready var rumors_button: Button = $RumorsButton/Button
+@onready var rumors_ui: CanvasLayer = $RumorsUI
 
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
@@ -65,6 +67,7 @@ func _ready() -> void:
 	community_board_button.pressed.connect(_on_community_board_button_pressed)
 	mailbox_button.pressed.connect(_on_mailbox_button_pressed)
 	museum_button.pressed.connect(_on_museum_button_pressed)
+	rumors_button.pressed.connect(_on_rumors_button_pressed)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -110,6 +113,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if mailbox_ui.close_topmost():
 			return
 		if museum_ui.close_topmost():
+			return
+		if rumors_ui.close_topmost():
 			return
 		if landmark_display.close_topmost():
 			return
@@ -266,6 +271,10 @@ func _on_mailbox_button_pressed() -> void:
 
 func _on_museum_button_pressed() -> void:
 	museum_ui.show_museum()
+
+
+func _on_rumors_button_pressed() -> void:
+	rumors_ui.show_rumors()
 
 
 func _record_visit(marker: LandmarkMarker) -> void:
