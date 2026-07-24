@@ -68,6 +68,8 @@ grant select on atlas_view to authenticated;
 -- Belt-and-braces on top of the tightened policy above: excludes
 -- already-published Landmarks explicitly, not just via RLS, matching
 -- the intent that this view is ONLY ever genuinely open Rumors.
+-- outside_community_range stays appended LAST (matching the fix in
+-- 20260736) -- CREATE OR REPLACE VIEW can only add columns at the end.
 create or replace view rumor_landmarks_view
   with (security_invoker = true) as
 select
@@ -79,7 +81,6 @@ select
   st_y(l.location::geometry) as lat,
   st_x(l.location::geometry) as lng,
   l.required_verifications,
-  l.outside_community_range,
   (
     select count(distinct v.wayfinder_id) from verifications v
     where v.landmark_id = l.id and v.verification_type = 'exists'
@@ -91,7 +92,8 @@ select
   exists (
     select 1 from landmark_sources s
     where s.landmark_id = l.id and s.source_type = 'player_submission' and s.submitted_by = auth.uid()
-  ) as is_own_submission
+  ) as is_own_submission,
+  l.outside_community_range
 from landmarks l
 where l.lifecycle_state = 'rumor' and l.publication_state != 'published';
 

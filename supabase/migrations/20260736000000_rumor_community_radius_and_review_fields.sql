@@ -178,6 +178,11 @@ $$;
 
 revoke all on function reject_rumor(uuid, text, text) from public;
 
+-- outside_community_range is appended LAST, not inserted alongside
+-- required_verifications -- CREATE OR REPLACE VIEW can only add new
+-- columns at the end of the list; inserting one in the middle shifts
+-- every column after it and Postgres reads that as trying to rename
+-- them, which it refuses to do (42P16).
 create or replace view rumor_landmarks_view
   with (security_invoker = true) as
 select
@@ -189,7 +194,6 @@ select
   st_y(l.location::geometry) as lat,
   st_x(l.location::geometry) as lng,
   l.required_verifications,
-  l.outside_community_range,
   (
     select count(distinct v.wayfinder_id) from verifications v
     where v.landmark_id = l.id and v.verification_type = 'exists'
@@ -201,6 +205,7 @@ select
   exists (
     select 1 from landmark_sources s
     where s.landmark_id = l.id and s.source_type = 'player_submission' and s.submitted_by = auth.uid()
-  ) as is_own_submission
+  ) as is_own_submission,
+  l.outside_community_range
 from landmarks l
 where l.lifecycle_state = 'rumor';
