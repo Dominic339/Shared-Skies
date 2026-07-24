@@ -78,8 +78,6 @@ func _load_progress(community_id: String) -> void:
 			entry.text = "○ %s" % row.get("item_name", "")
 		entries_container.add_child(entry)
 
-	panel.reset_size()
-
 
 func _load_donatable_items() -> void:
 	item_option.clear()
