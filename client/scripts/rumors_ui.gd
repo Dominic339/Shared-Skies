@@ -61,7 +61,7 @@ func _load_rumors() -> void:
 
 	var rows: Array = await SupabaseClient.get_table(
 		"rumor_landmarks_view",
-		"select=id,name,category,required_verifications,confirmation_count,already_confirmed,is_own_submission"
+		"select=id,name,category,required_verifications,confirmation_count,already_confirmed,is_own_submission,awaiting_review"
 		+ "&order=name"
 	)
 
@@ -69,9 +69,12 @@ func _load_rumors() -> void:
 		var row_box := HBoxContainer.new()
 		var label := Label.new()
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.text = "%s (%s) -- Needs confirmations: %d/%d" % [
+		var awaiting_review: bool = row.get("awaiting_review", false)
+		label.text = "%s (%s) -- %s" % [
 			row.get("name", ""), row.get("category", ""),
-			row.get("confirmation_count", 0), row.get("required_verifications", 5)
+			"Under Review" if awaiting_review else "Needs confirmations: %d/%d" % [
+				row.get("confirmation_count", 0), row.get("required_verifications", 5)
+			]
 		]
 		row_box.add_child(label)
 
@@ -79,11 +82,17 @@ func _load_rumors() -> void:
 		var is_own: bool = row.get("is_own_submission", false)
 		var already_confirmed: bool = row.get("already_confirmed", false)
 
-		var confirm_button := Button.new()
-		confirm_button.text = "Confirm"
-		confirm_button.disabled = is_own or already_confirmed
-		confirm_button.pressed.connect(_on_confirm_pressed.bind(landmark_id))
-		row_box.add_child(confirm_button)
+		# The threshold has done its job once a Rumor is under review --
+		# further confirmations wouldn't change anything and would just
+		# send more players toward an unreviewed location. Hidden
+		# entirely rather than shown-disabled, since there's nothing
+		# left for this button to do.
+		if not awaiting_review:
+			var confirm_button := Button.new()
+			confirm_button.text = "Confirm"
+			confirm_button.disabled = is_own or already_confirmed
+			confirm_button.pressed.connect(_on_confirm_pressed.bind(landmark_id))
+			row_box.add_child(confirm_button)
 
 		var report_button := Button.new()
 		report_button.text = "Report"
