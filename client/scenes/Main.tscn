@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://scripts/mailbox_ui.gd" id="12"]
 [ext_resource type="Script" path="res://scripts/museum_ui.gd" id="13"]
 [ext_resource type="Script" path="res://scripts/rumors_ui.gd" id="14"]
+[ext_resource type="Script" path="res://scripts/community_recommendations_ui.gd" id="15"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
@@ -189,6 +190,15 @@ offset_top = 352.0
 offset_right = 1064.0
 offset_bottom = 392.0
 text = "Rumors"
+
+[node name="CommunityRecommendationsButton" type="CanvasLayer" parent="."]
+
+[node name="Button" type="Button" parent="CommunityRecommendationsButton"]
+offset_left = 900.0
+offset_top = 400.0
+offset_right = 1064.0
+offset_bottom = 440.0
+text = "Recommendations"
 
 [node name="AtlasUI" type="CanvasLayer" parent="."]
 script = ExtResource("6")
@@ -553,4 +563,43 @@ placeholder_text = "Details (optional)"
 text = "Submit Report"
 
 [node name="CloseButton" type="Button" parent="RumorsUI/ReportPanel/VBoxContainer"]
+text = "Close"
+
+[node name="CommunityRecommendationsUI" type="CanvasLayer" parent="."]
+script = ExtResource("15")
+
+[node name="Panel" type="PanelContainer" parent="CommunityRecommendationsUI"]
+offset_left = 60.0
+offset_top = 220.0
+offset_right = 1020.0
+offset_bottom = 1400.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CommunityRecommendationsUI/Panel"]
+
+[node name="TitleLabel" type="Label" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 32
+text = "Community Recommendations"
+
+[node name="CommunityOption" type="OptionButton" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
+
+[node name="ScrollContainer" type="ScrollContainer" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="EntriesContainer" type="VBoxContainer" parent="CommunityRecommendationsUI/Panel/VBoxContainer/ScrollContainer"]
+size_flags_horizontal = 3
+
+[node name="RecommendControls" type="VBoxContainer" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
+
+[node name="LandmarkOption" type="OptionButton" parent="CommunityRecommendationsUI/Panel/VBoxContainer/RecommendControls"]
+
+[node name="BodyEdit" type="LineEdit" parent="CommunityRecommendationsUI/Panel/VBoxContainer/RecommendControls"]
+placeholder_text = "Why is this worth visiting?"
+
+[node name="SubmitButton" type="Button" parent="CommunityRecommendationsUI/Panel/VBoxContainer/RecommendControls"]
+text = "Recommend"
+
+[node name="StatusLabel" type="Label" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
+text = ""
+
+[node name="CloseButton" type="Button" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
 text = "Close"
