@@ -39,6 +39,7 @@ var landmark_id: String = ""
 var code: String = ""
 var landmark_name: String = ""
 var category: String = ""
+var facing_degrees: float = 0.0
 
 var in_range: bool = false
 var visited: bool = false
@@ -126,14 +127,21 @@ func _apply_toon_demo_material(node: Node) -> void:
 # keeps the 3D name tag/category color in sync with the data instead of
 # needing every caller to remember to update them separately.
 func setup(
-	p_landmark_id: String, p_code: String, p_name: String, p_category: String, p_slot_count: int = 3
+	p_landmark_id: String, p_code: String, p_name: String, p_category: String,
+	p_slot_count: int = 3, p_facing_degrees: float = 0.0
 ) -> void:
 	landmark_id = p_landmark_id
 	code = p_code
 	landmark_name = p_name
 	category = p_category
+	facing_degrees = p_facing_degrees
 
 	name_label.text = landmark_name
+	# Set once, here, and never touched again -- signs are static world
+	# objects like Pokestops, not billboards that track the camera.
+	# FRONT_AXIS_CORRECTION_DEGREES compensates for the sign model's
+	# authored front direction not lining up with facing_degrees=0.
+	rotation.y = deg_to_rad(facing_degrees) + deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES)
 	# Sub-resources (like this material) are shared across every instance
 	# of a scene by default -- duplicate before mutating, or every marker
 	# would end up the same color as whichever was set up last.
@@ -189,61 +197,11 @@ func set_selected(value: bool) -> void:
 	name_label.modulate = NAME_COLOR_SELECTED if value else NAME_COLOR
 
 
-# Degrees added on top of the raw look-at angle to correct for the sign
-# model's authored front direction not matching Godot's look_at()
-# default (local -Z is "forward"). If the sign ends up facing away from
-# the camera once tested, this is the one number to change -- try 90,
-# -90, or 180.
+# Degrees added on top of facing_degrees to correct for the sign model's
+# authored front direction not matching Godot's look_at() default (local
+# -Z is "forward"). If the sign ends up facing the wrong way once tested,
+# this is the one number to change -- try 90, -90, or 180.
 const FRONT_AXIS_CORRECTION_DEGREES := -90.0
-const TURN_SPEED_DEGREES_PER_SEC := 90.0
-# While selected/focused, the camera cuts to a close head-on framing almost
-# immediately (see main.gd's FOCUS_ZOOM/FOCUS_PITCH_DEGREES) -- the normal
-# ambient turn speed is too slow to keep up within that same instant, which
-# is what produced the off-angle "still turning" look right after a tap.
-# Selected state gets a much faster turn instead of an instant snap, so it
-# still reads as a motion rather than a hard cut.
-const FOCUSED_TURN_SPEED_DEGREES_PER_SEC := 720.0
-
-
-# Shared by face_camera() and snap_to_camera() -- returns null if the
-# camera is directly overhead (no meaningful yaw to face).
-func _target_yaw(camera_global_position: Vector3) -> Variant:
-	var target := camera_global_position
-	target.y = global_position.y
-	if target.distance_to(global_position) < 0.01:
-		return null
-	var to_target := target - global_position
-	return atan2(to_target.x, to_target.z) + deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES)
-
-
-# Rotates the whole marker (board + collision + indicators together, so
-# they stay aligned) around the vertical axis only -- never tilts up/
-# down -- to keep the sign's readable face toward the camera (not the
-# player avatar -- the camera can be dragged to a different angle, and
-# it's what the player is actually looking through) regardless of which
-# side it's viewed from. Turns at a limited speed instead of snapping
-# instantly.
-func face_camera(camera_global_position: Vector3, delta: float) -> void:
-	var target_yaw: Variant = _target_yaw(camera_global_position)
-	if target_yaw == null:
-		return
-	var turn_speed := FOCUSED_TURN_SPEED_DEGREES_PER_SEC if selected else TURN_SPEED_DEGREES_PER_SEC
-	var max_step := deg_to_rad(turn_speed) * delta
-	var diff := wrapf(target_yaw - rotation.y, -PI, PI)
-	rotation.y += clampf(diff, -max_step, max_step)
-
-
-# Snaps to face a FIXED camera yaw (main.gd's FOCUS_CAMERA_YAW_DEGREES),
-# not wherever the camera actually is -- the focused view is meant to be
-# one absolute, deterministic framing, completely independent of the
-# player's position/approach angle before tapping. That's the actual fix
-# for the inconsistent framing: snap_to_camera() (this method's
-# predecessor) still computed yaw from the camera's real position, which
-# just moved the dependency on approach angle from "how far ambient
-# tracking caught up" to "where the player was standing when they
-# tapped" -- still not deterministic.
-func snap_to_fixed_yaw(camera_yaw_degrees: float) -> void:
-	rotation.y = deg_to_rad(camera_yaw_degrees) + deg_to_rad(FRONT_AXIS_CORRECTION_DEGREES)
 
 
 func _on_input_event(

@@ -6,14 +6,6 @@ const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real 
 const PROXIMITY_RADIUS_METERS := 25.0
 const FOCUS_ZOOM := 5.5  # tighter than free-roam ever needs -- fills the frame with the ~4.5m (2x-scaled) sign structure
 const FOCUS_PITCH_DEGREES := 0.0  # fully level -- flat-on with the board, not looking down at it from above
-# Fixed, arbitrary reference angle for the focus view -- both the camera's
-# yaw and the sign's rotation snap to this same absolute value (see
-# LandmarkMarker.snap_to_fixed_yaw()) instead of being derived from
-# wherever the player/camera actually was before tapping. That's what
-# makes the focused framing identical every time, regardless of approach
-# angle -- deriving it from the camera's real position (the previous
-# approach) just moved the inconsistency around instead of removing it.
-const FOCUS_CAMERA_YAW_DEGREES := 0.0
 # Board's face sits roughly at this height above the marker's (ground-level)
 # origin -- orbiting around the ground would tilt the framing toward the
 # sign's base instead of centering the board itself. Matches the board's
@@ -152,7 +144,7 @@ func _process(delta: float) -> void:
 	# roams. A real fix (ground as part of the tile system) can replace
 	# this once habitat/land-cover rendering lands.
 	ground.position = Vector3(player_marker.position.x, 0.0, player_marker.position.z)
-	_check_proximity(delta)
+	_check_proximity()
 
 
 func _handle_movement_input(delta: float) -> void:
@@ -184,16 +176,10 @@ func _handle_movement_input(delta: float) -> void:
 	DevLocation.move(movement.x, -movement.z)
 
 
-func _check_proximity(delta: float) -> void:
+func _check_proximity() -> void:
 	for marker: LandmarkMarker in landmark_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
-		# The focused sign holds still instead of continuing to chase the
-		# camera -- otherwise dragging the camera around a focused sign to
-		# inspect it from another angle is impossible, since it just spins
-		# to face wherever you moved to.
-		if marker != focused_marker:
-			marker.face_camera(camera.global_position, delta)
 	for marker: CommunityCenterMarker in community_center_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
@@ -201,7 +187,8 @@ func _check_proximity(delta: float) -> void:
 
 func _load_landmarks() -> void:
 	var rows: Array = await SupabaseClient.get_table(
-		"landmarks_map_view", "select=id,code,name,category,lat,lng,profile_card_slot_count"
+		"landmarks_map_view",
+		"select=id,code,name,category,lat,lng,profile_card_slot_count,facing_degrees"
 	)
 	print("Fetched %d published landmark(s)." % rows.size())
 
@@ -213,7 +200,8 @@ func _load_landmarks() -> void:
 			row.get("code", ""),
 			row.get("name", ""),
 			row.get("category", ""),
-			row.get("profile_card_slot_count", 3)
+			row.get("profile_card_slot_count", 3),
+			row.get("facing_degrees", 0.0)
 		)
 		marker.position = GeoProjection.to_local(row.get("lat", 0.0), row.get("lng", 0.0))
 		marker.tapped.connect(_on_landmark_marker_tapped)
@@ -255,8 +243,12 @@ func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 
 	focused_marker = marker
 	marker.set_selected(true)
-	marker.snap_to_fixed_yaw(FOCUS_CAMERA_YAW_DEGREES)
-	camera.yaw_degrees = FOCUS_CAMERA_YAW_DEGREES
+	# The sign itself never rotates (it's a static object, like a real
+	# signpost) -- the camera swings to the sign's own fixed facing_degrees
+	# instead, so focus still lands on a consistent, correctly-framed front
+	# view of THIS Landmark's actual orientation rather than an arbitrary
+	# shared angle.
+	camera.yaw_degrees = marker.facing_degrees
 	camera.locked = true
 	camera.animate_zoom_to(FOCUS_ZOOM)
 	camera.animate_pitch_to(FOCUS_PITCH_DEGREES)
