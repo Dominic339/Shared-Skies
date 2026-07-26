@@ -45,6 +45,7 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var community_recommendations_ui: CanvasLayer = $CommunityRecommendationsUI
 @onready var community_center_markers: Node3D = $CommunityCenterMarkers
 @onready var community_center_ui: CanvasLayer = $CommunityCenterUI
+@onready var nearby_ui: CanvasLayer = $NearbyUI
 
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
@@ -69,6 +70,9 @@ func _ready() -> void:
 	community_center_ui.setup_links(
 		community_board_ui, museum_ui, mailbox_ui, community_recommendations_ui
 	)
+	nearby_ui.setup(landmark_markers, community_center_markers, player_marker, PROXIMITY_RADIUS_METERS)
+	nearby_ui.landmark_tapped.connect(_on_landmark_marker_tapped)
+	nearby_ui.community_center_tapped.connect(_on_community_center_marker_tapped)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -195,15 +199,26 @@ func _load_landmarks() -> void:
 	for row: Dictionary in rows:
 		var marker: LandmarkMarker = LandmarkMarkerScene.instantiate()
 		landmark_markers.add_child(marker)
+		var lat: float = row.get("lat", 0.0)
+		var lng: float = row.get("lng", 0.0)
+		# null facing_degrees means no manual override has been set for
+		# this Landmark yet -- fall back to auto-facing the nearest road;
+		# if even that finds nothing nearby (outside the exported map
+		# area), 0.0 is a reasonable last-resort default.
+		var facing_degrees: Variant = row.get("facing_degrees")
+		if facing_degrees == null:
+			facing_degrees = RoadFacing.compute_facing_degrees(lat, lng)
+		if facing_degrees == null:
+			facing_degrees = 0.0
 		marker.setup(
 			row.get("id", ""),
 			row.get("code", ""),
 			row.get("name", ""),
 			row.get("category", ""),
 			row.get("profile_card_slot_count", 3),
-			row.get("facing_degrees", 0.0)
+			facing_degrees
 		)
-		marker.position = GeoProjection.to_local(row.get("lat", 0.0), row.get("lng", 0.0))
+		marker.position = GeoProjection.to_local(lat, lng)
 		marker.tapped.connect(_on_landmark_marker_tapped)
 		markers_by_landmark_id[marker.landmark_id] = marker
 

@@ -2,12 +2,15 @@
 -- to a fixed angle on focus -- both replaced client-side with a single,
 -- permanent orientation set once at spawn (see landmark_marker.gd). That
 -- needs a real value to spawn with: facing_degrees is a compass-style
--- yaw (0 = the same reference direction the old FOCUS_CAMERA_YAW_DEGREES
--- constant used), editable per Landmark same as community_centers'
--- anchor_name -- 0 for every existing row is a placeholder, not a
--- reviewed "faces the trail" choice, until a real content pass sets
--- these individually.
-alter table landmarks add column facing_degrees numeric not null default 0;
+-- yaw (matching the same atan2(x, z) convention the old ambient
+-- face-camera code already used). Left nullable with no default rather
+-- than defaulting to 0 -- null means "no manual override," which the
+-- client resolves by auto-orienting the sign toward the nearest road in
+-- its own cooked map tile data (see road_facing.gd). Setting a real
+-- number here (e.g. once a content pass hand-picks a better angle, same
+-- as community_centers' anchor_name placeholders) always wins over the
+-- auto-computed one.
+alter table landmarks add column facing_degrees numeric;
 
 -- DROP + CREATE, not CREATE OR REPLACE -- appending a column at the very
 -- end is technically allowed by REPLACE, but this view has already burned
