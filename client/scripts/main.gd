@@ -1,6 +1,7 @@
 extends Node3D
 
 const LandmarkMarkerScene := preload("res://scenes/LandmarkMarker.tscn")
+const CommunityCenterMarkerScene := preload("res://scenes/CommunityCenterMarker.tscn")
 const MOVE_SPEED_METERS_PER_SEC := 30.0  # dev-only testing convenience -- real gameplay uses actual device GPS, not this
 const PROXIMITY_RADIUS_METERS := 25.0
 const FOCUS_ZOOM := 5.5  # tighter than free-roam ever needs -- fills the frame with the ~4.5m (2x-scaled) sign structure
@@ -50,6 +51,8 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var rumors_ui: CanvasLayer = $RumorsUI
 @onready var community_recommendations_button: Button = $CommunityRecommendationsButton/Button
 @onready var community_recommendations_ui: CanvasLayer = $CommunityRecommendationsUI
+@onready var community_center_markers: Node3D = $CommunityCenterMarkers
+@onready var community_center_ui: CanvasLayer = $CommunityCenterUI
 
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
@@ -71,6 +74,9 @@ func _ready() -> void:
 	museum_button.pressed.connect(_on_museum_button_pressed)
 	rumors_button.pressed.connect(_on_rumors_button_pressed)
 	community_recommendations_button.pressed.connect(_on_community_recommendations_button_pressed)
+	community_center_ui.setup_links(
+		community_board_ui, museum_ui, mailbox_ui, community_recommendations_ui
+	)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -78,6 +84,7 @@ func _ready() -> void:
 
 	await _load_landmarks()
 	await _load_existing_visits()
+	await _load_community_centers()
 
 	# Connected only now, after the initial load above completes -- fires
 	# on a later re-authentication (a dev test-account switch mid-session),
@@ -120,6 +127,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if rumors_ui.close_topmost():
 			return
 		if community_recommendations_ui.close_topmost():
+			return
+		if community_center_ui.close_topmost():
 			return
 		if landmark_display.close_topmost():
 			return
@@ -185,6 +194,9 @@ func _check_proximity(delta: float) -> void:
 		# to face wherever you moved to.
 		if marker != focused_marker:
 			marker.face_camera(camera.global_position, delta)
+	for marker: CommunityCenterMarker in community_center_markers.get_children():
+		var player_distance := player_marker.global_position.distance_to(marker.global_position)
+		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
 
 
 func _load_landmarks() -> void:
@@ -217,6 +229,20 @@ func _load_existing_visits() -> void:
 		if marker:
 			marker.set_visited(true)
 	print("%d Landmark(s) already visited." % rows.size())
+
+
+func _load_community_centers() -> void:
+	var rows: Array = await SupabaseClient.get_table(
+		"community_centers_view", "select=id,community_id,name,lat,lng"
+	)
+	print("Fetched %d Community Center(s)." % rows.size())
+
+	for row: Dictionary in rows:
+		var marker: CommunityCenterMarker = CommunityCenterMarkerScene.instantiate()
+		community_center_markers.add_child(marker)
+		marker.setup(row.get("id", ""), row.get("community_id", ""), row.get("name", ""))
+		marker.position = GeoProjection.to_local(row.get("lat", 0.0), row.get("lng", 0.0))
+		marker.tapped.connect(_on_community_center_marker_tapped)
 
 
 func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
@@ -284,6 +310,10 @@ func _on_rumors_button_pressed() -> void:
 
 func _on_community_recommendations_button_pressed() -> void:
 	community_recommendations_ui.show_recommendations()
+
+
+func _on_community_center_marker_tapped(marker: CommunityCenterMarker) -> void:
+	community_center_ui.show_hub(marker.center_name)
 
 
 func _record_visit(marker: LandmarkMarker) -> void:

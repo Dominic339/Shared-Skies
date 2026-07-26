@@ -1,0 +1,41 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/community_center_marker.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/signpost.glb" id="2"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_1"]
+radius = 0.5
+height = 2.0
+
+[sub_resource type="TorusMesh" id="TorusMesh_1"]
+inner_radius = 1.0
+outer_radius = 1.3
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_InRange"]
+albedo_color = Color(1, 0.6, 0.2, 1)
+emission_enabled = true
+emission = Color(1, 0.6, 0.2, 1)
+emission_energy_multiplier = 1.5
+
+[node name="CommunityCenterMarker" type="Area3D"]
+script = ExtResource("1")
+
+[node name="SignpostModel" parent="." instance=ExtResource("2")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+shape = SubResource("CylinderShape3D_1")
+
+[node name="InRangeIndicator" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+cast_shadow = 0
+mesh = SubResource("TorusMesh_1")
+surface_material_override/0 = SubResource("StandardMaterial3D_InRange")
+visible = false
+
+[node name="NameLabel3D" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+billboard = 1
+font_size = 48
+outline_size = 8
+text = "Community Center"
