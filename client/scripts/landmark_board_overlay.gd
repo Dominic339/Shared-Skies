@@ -1,18 +1,23 @@
 extends CanvasLayer
 
-# The kiosk board's presentation content (name/photo/description/tags/
-# badges) -- shown alongside landmark_display_ui.gd's interactive popup
-# once a Landmark is focused (tapped), not while just walking past it
-# in range; an earlier version showed on proximity instead, but that
-# made it pop up during ordinary exploration rather than only when you
-# actually stop to look at a sign. A single 2D screen-space overlay
-# reused for whatever marker is currently focused, not a 3D texture
-# baked per-marker -- this sidesteps two problems a first attempt at a
-# 3D-projected board hit: no blind 3D-mesh-alignment guesswork (this
-# reuses the exact same camera.unproject_position() screen-anchoring
-# technique landmark_display_ui.gd already has proven working), and no
-# need to ever render more than one of these regardless of how many
-# signs happen to be nearby simultaneously.
+# The kiosk board's presentation content AND every interaction a player
+# needs while looking at a Landmark -- description, tags, visited/favorite
+# state, collecting/leaving a profile card. This used to share the screen
+# with a separate dev-style popup that duplicated some of this; that popup
+# is gone now; everything lives here, on the one UI meant to represent
+# "looking at the sign itself." Shown once a
+# Landmark is focused (tapped), not while just walking past it in range;
+# an earlier version showed on proximity instead, but that made it pop up
+# during ordinary exploration rather than only when you actually stop to
+# look at a sign. A single 2D screen-space overlay reused for whatever
+# marker is currently focused, not a 3D texture baked per-marker -- this
+# sidesteps two problems a first attempt at a 3D-projected board hit: no
+# blind 3D-mesh-alignment guesswork (this reuses the exact same
+# camera.unproject_position() screen-anchoring technique already proven
+# working elsewhere), and no need to ever render more than one of these
+# regardless of how many signs happen to be nearby simultaneously.
+
+signal closed
 
 const TAG_LABELS := {
 	"wheelchair_accessible": "Wheelchair Accessible",
@@ -37,13 +42,14 @@ const TAG_LABELS := {
 @onready var panel: Panel = $Panel
 @onready var title_label: Label = $Panel/HeaderPanel/TitleLabel
 @onready var subtitle_label: Label = $Panel/HeaderPanel/SubtitleLabel
+@onready var leave_card_button: Button = $Panel/HeaderPanel/LeaveCardButton
 @onready var collect_button: Button = $Panel/HeaderPanel/CollectButton
+@onready var close_button: Button = $Panel/HeaderPanel/CloseButton
 @onready var photo_rect: TextureRect = $Panel/PhotoRect
 @onready var description_label: RichTextLabel = $Panel/DescriptionLabel
-@onready var recommend_button: Button = $Panel/RecommendButton
-@onready var recommend_status_label: Label = $Panel/RecommendStatusLabel
+@onready var favorite_button: Button = $Panel/FavoriteButton
 # Tags (wheelchair accessible, historic, etc.) sit bottom-left; status
-# badges (Visited, Recommended, Card available) sit bottom-right -- two
+# badges (Visited, Favorited, Card available) sit bottom-right -- two
 # separate fixed-rect boxes rather than one shared row, since a single
 # mixed row read as one big pile with no clear grouping.
 @onready var tag_row: HFlowContainer = $Panel/TagRow
@@ -56,17 +62,21 @@ var _camera: Camera3D = null
 var _short_description: String = ""
 var _long_description: String = ""
 var _showing_long_description: bool = false
-var _has_recommended: bool = false
+var _is_favorited: bool = false
+var _has_empty_slot: bool = false
+var _already_placed_card: bool = false
 
 
 func _ready() -> void:
 	hide()
+	leave_card_button.pressed.connect(_on_leave_card_pressed)
 	collect_button.pressed.connect(_on_collect_pressed)
-	recommend_button.pressed.connect(_on_recommend_pressed)
+	close_button.pressed.connect(_on_close_pressed)
+	favorite_button.pressed.connect(_on_favorite_pressed)
 	description_label.meta_clicked.connect(_on_description_meta_clicked)
 
 
-# Called from main.gd's tap handler, alongside landmark_display.show_landmark().
+# Called from main.gd's tap handler.
 func show_for(marker: LandmarkMarker, camera: Camera3D) -> void:
 	_camera = camera
 	if _marker == marker:
@@ -80,6 +90,20 @@ func show_for(marker: LandmarkMarker, camera: Camera3D) -> void:
 func hide_overlay() -> void:
 	_marker = null
 	hide()
+
+
+func _on_close_pressed() -> void:
+	hide_overlay()
+	closed.emit()
+
+
+# Used by main.gd's global Escape handler, same pattern every other panel
+# in this game already follows. Returns whether it actually closed anything.
+func close_topmost() -> bool:
+	if not visible:
+		return false
+	_on_close_pressed()
+	return true
 
 
 # Re-fetches without changing which marker is targeted -- called after
@@ -109,13 +133,8 @@ const VERTICAL_DROP := 82.0
 func _update_position() -> void:
 	var anchor := _marker.global_position + Vector3(0, LandmarkMarker.STRUCTURE_TOP_HEIGHT_METERS, 0)
 	var screen_point := _camera.unproject_position(anchor)
-	# Mostly to the LEFT of the sign's anchor point, not stacked above it --
-	# landmark_display_ui.gd's popup is centered on this exact same
-	# anchor while focused (both panels are only ever visible together
-	# now that this overlay shows on focus instead of on proximity), so
-	# stacking vertically would overlap it regardless of either panel's
-	# actual height. Check once both are visible together and adjust
-	# the gap/side if it still crowds the popup.
+	# Mostly to the LEFT of the sign's anchor point, not stacked above it,
+	# since that's the anchor the sign's own top edge sits at too.
 	#
 	# Top-anchored at the sign's structure height (plus VERTICAL_DROP),
 	# extending DOWNWARD from there -- vertically centering on an anchor
@@ -155,6 +174,10 @@ func _load_data() -> void:
 	var long_description: Variant = data.get("long_description")
 	_short_description = short_description if short_description != null else ""
 	_long_description = long_description if long_description != null else _short_description
+	# Always re-collapse on a fresh load (a new Landmark, or a refresh of
+	# this same one) -- otherwise refresh_if_showing() after some unrelated
+	# action (a favorite toggle) would keep an expanded description
+	# expanded even though nothing asked for that.
 	_showing_long_description = false
 	_set_description_display()
 
@@ -166,13 +189,16 @@ func _load_data() -> void:
 		child.queue_free()
 	_populate_tags(data.get("tags", []))
 
-	var has_uncollected_card := await _has_uncollected_card(landmark_id)
+	var slot_summary := await _fetch_card_slot_summary(landmark_id)
 	if _marker == null or _marker.landmark_id != landmark_id:
 		return
-	_populate_badges(data.get("visited", false), data.get("recommendation_count", 0), has_uncollected_card)
-	collect_button.disabled = not has_uncollected_card
+	_has_empty_slot = slot_summary.has_empty_slot
+	_already_placed_card = slot_summary.already_placed_card
+	_populate_badges(data.get("visited", false), data.get("recommendation_count", 0), slot_summary.has_collectible_card)
+	collect_button.disabled = not slot_summary.has_collectible_card or not _marker.in_range
+	leave_card_button.disabled = _already_placed_card or not _has_empty_slot or not _marker.in_range
 
-	await _load_recommendation_state()
+	await _load_favorite_state()
 	if _marker == null or _marker.landmark_id != landmark_id:
 		return
 
@@ -180,6 +206,15 @@ func _load_data() -> void:
 
 
 const READ_MORE_LINK_COLOR := Color(0.68, 0.82, 1.0)
+
+# The description's own box when collapsed (its normal, authored size in
+# Main.tscn) vs. expanded to take over the space TagRow/BadgeRow/
+# FavoriteButton would otherwise occupy -- there's nowhere else on this
+# fixed-rect panel to put a much longer long_description without either
+# cutting it off or overlapping something, so expanding "into" the space
+# below (hiding those pieces while it does) is what actually fits.
+const DESCRIPTION_RECT_COLLAPSED := Rect2(332, 68, 482, 150)
+const DESCRIPTION_RECT_EXPANDED := Rect2(332, 68, 482, 376)
 
 
 # Appends a clickable "Read more..."/"Show less" link right after the
@@ -192,6 +227,14 @@ func _set_description_display() -> void:
 	var body := _long_description if _showing_long_description else _short_description
 	var escaped := body.replace("[", "[lb]").replace("]", "[rb]")
 	var has_more := _long_description != _short_description and _long_description != ""
+
+	var rect := DESCRIPTION_RECT_EXPANDED if _showing_long_description else DESCRIPTION_RECT_COLLAPSED
+	description_label.position = rect.position
+	description_label.size = rect.size
+	tag_row.visible = not _showing_long_description
+	badge_row.visible = not _showing_long_description
+	favorite_button.visible = not _showing_long_description
+
 	if not has_more:
 		description_label.text = escaped
 		return
@@ -211,19 +254,45 @@ func _on_collect_pressed() -> void:
 		_marker.quick_collect()
 
 
-# "Recommend This Place" -- moved here from the popup so everything the
-# player needs while looking at this Landmark lives in one UI instead of
-# needing the separate dev-style popup open too. Requires having actually
-# visited it first (checked server-side too, see recommend_landmark()/
-# unrecommend_landmark()).
-func _load_recommendation_state() -> void:
-	recommend_status_label.text = ""
+func _on_leave_card_pressed() -> void:
+	if _marker == null:
+		return
+	var slot_id := await _find_empty_slot_id(_marker.landmark_id)
+	if slot_id == "":
+		return
+	var row := await SupabaseClient.insert_row("profile_card_placements", {
+		"slot_id": slot_id,
+		"placed_by": SupabaseClient.user_id,
+	})
+	if row.is_empty():
+		print("Failed to leave card for %s" % _marker.landmark_id)
+		return
+	await _marker.refresh_card_slots()
+	await _load_data()
+
+
+func _find_empty_slot_id(landmark_id: String) -> String:
+	var rows: Array = await SupabaseClient.get_table(
+		"profile_card_slots_view",
+		"select=slot_id,occupied&landmark_id=eq.%s&order=slot_index" % landmark_id
+	)
+	for row: Dictionary in rows:
+		if not row.get("occupied", false):
+			return row.get("slot_id", "")
+	return ""
+
+
+# "Favorited" -- a star toggle in the panel's bottom corner, replacing what
+# used to be a "Recommend This Place" text button. Same underlying vote
+# (recommend_landmark()/unrecommend_landmark()) and the same "must have
+# visited first" server-side rule -- just reframed client-side as a
+# favorite rather than a named recommendation, and moved out of the way of
+# the main content instead of taking up a full text-button row.
+func _load_favorite_state() -> void:
 	if _marker == null:
 		return
 
-	recommend_button.disabled = not _marker.visited
-	if not _marker.visited:
-		recommend_status_label.text = "Visit this Landmark before recommending it."
+	favorite_button.disabled = not _marker.visited
 
 	var rows: Array = await SupabaseClient.get_table(
 		"community_recommendations_view",
@@ -232,22 +301,22 @@ func _load_recommendation_state() -> void:
 			% [_marker.landmark_id, SupabaseClient.user_id]
 		)
 	)
-	_has_recommended = not rows.is_empty()
-	recommend_button.text = "Remove Recommendation" if _has_recommended else "Recommend This Place"
+	_is_favorited = not rows.is_empty()
+	favorite_button.text = "★" if _is_favorited else "☆"
 
 
-func _on_recommend_pressed() -> void:
+func _on_favorite_pressed() -> void:
 	if _marker == null:
 		return
 
 	var result: Variant
-	if _has_recommended:
+	if _is_favorited:
 		result = await SupabaseClient.call_rpc("unrecommend_landmark", {"p_landmark_id": _marker.landmark_id})
 	else:
 		result = await SupabaseClient.call_rpc("recommend_landmark", {"p_landmark_id": _marker.landmark_id})
 
 	if result is Dictionary and result.is_empty():
-		recommend_status_label.text = SupabaseClient.last_error_message
+		print("Failed to update favorite state for %s" % _marker.landmark_id)
 	else:
 		await _load_data()
 
@@ -309,29 +378,41 @@ func _populate_tags(tags: Array) -> void:
 		tag_row.add_child(_make_chip(TAG_LABELS.get(tag, tag), TAG_CHIP_COLOR, TAG_CHIP_TEXT_COLOR))
 
 
-func _populate_badges(visited: bool, recommendation_count: int, has_uncollected_card: bool) -> void:
+func _populate_badges(visited: bool, recommendation_count: int, has_collectible_card: bool) -> void:
 	if visited:
 		badge_row.add_child(_make_chip("Visited", VISITED_CHIP_COLOR, VISITED_CHIP_TEXT_COLOR))
 	if recommendation_count > 0:
 		badge_row.add_child(_make_chip(
-			"Recommended (%d)" % recommendation_count, RECOMMENDED_CHIP_COLOR, RECOMMENDED_CHIP_TEXT_COLOR
+			"Favorited (%d)" % recommendation_count, RECOMMENDED_CHIP_COLOR, RECOMMENDED_CHIP_TEXT_COLOR
 		))
-	if has_uncollected_card:
+	if has_collectible_card:
 		badge_row.add_child(_make_chip("Card available", CARD_CHIP_COLOR, CARD_CHIP_TEXT_COLOR))
 
 
-# Reuses profile_card_slots_view rather than a second query shape --
-# an occupied slot that isn't this player's own card and hasn't been
-# collected yet is exactly what the "Card available" badge means.
-func _has_uncollected_card(landmark_id: String) -> bool:
+# One combined fetch (rather than three separate ones) for everything the
+# Collect and Leave My Card buttons need to know: whether there's an
+# uncollected card here (Collect), whether there's an empty slot and
+# whether you've already placed a card of your own here (Leave My Card).
+func _fetch_card_slot_summary(landmark_id: String) -> Dictionary:
 	var rows: Array = await SupabaseClient.get_table(
 		"profile_card_slots_view",
 		"select=occupied,is_own_card,already_collected&landmark_id=eq.%s" % landmark_id
 	)
+	var has_collectible_card := false
+	var has_empty_slot := false
+	var already_placed_card := false
 	for row: Dictionary in rows:
 		var occupied: bool = row.get("occupied", false)
 		var is_own_card: bool = row.get("is_own_card", false)
 		var already_collected: bool = row.get("already_collected", false)
 		if occupied and not is_own_card and not already_collected:
-			return true
-	return false
+			has_collectible_card = true
+		if not occupied:
+			has_empty_slot = true
+		if is_own_card:
+			already_placed_card = true
+	return {
+		"has_collectible_card": has_collectible_card,
+		"has_empty_slot": has_empty_slot,
+		"already_placed_card": already_placed_card,
+	}

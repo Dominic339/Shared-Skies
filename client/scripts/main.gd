@@ -24,7 +24,6 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var ground: Node3D = $Ground
 @onready var player_marker: Node3D = $PlayerMarker
 @onready var landmark_markers: Node3D = $LandmarkMarkers
-@onready var landmark_display: CanvasLayer = $LandmarkDisplay
 @onready var atlas_button: Button = $AtlasButton/Button
 @onready var atlas_ui: CanvasLayer = $AtlasUI
 @onready var postcards_button: Button = $PostcardsButton/Button
@@ -57,7 +56,7 @@ var _yaw_before_focus: float = 0.0
 func _ready() -> void:
 	print("Shared Skies booted.")
 	get_viewport().physics_object_picking = true
-	landmark_display.closed.connect(_on_landmark_display_closed)
+	landmark_board_overlay.closed.connect(_on_board_overlay_closed)
 	atlas_button.pressed.connect(_on_atlas_button_pressed)
 	postcards_button.pressed.connect(_on_postcards_button_pressed)
 	profile_cards_button.pressed.connect(_on_profile_cards_button_pressed)
@@ -72,7 +71,6 @@ func _ready() -> void:
 	nearby_ui.setup(landmark_markers, community_center_markers, player_marker, PROXIMITY_RADIUS_METERS)
 	nearby_ui.landmark_tapped.connect(_on_landmark_marker_tapped)
 	nearby_ui.community_center_tapped.connect(_on_community_center_marker_tapped)
-	landmark_display.set_board_overlay(landmark_board_overlay)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -97,7 +95,14 @@ func _on_supabase_reauthenticated() -> void:
 	print("Signed in anonymously as %s" % SupabaseClient.user_id)
 	for marker: LandmarkMarker in markers_by_landmark_id.values():
 		marker.set_visited(false)
+		# is_own_card/already_collected (and the board overlay's Favorited/
+		# Collect state) are all relative to whichever account is currently
+		# signed in -- a dev test-account switch left these all showing the
+		# PREVIOUS account's state until whatever UI happened to reload next.
+		marker.refresh_card_slots()
 	await _load_existing_visits()
+	if focused_marker:
+		landmark_board_overlay.refresh_if_showing(focused_marker)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -126,7 +131,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if stamp_desk_ui.close_topmost():
 			return
-		if landmark_display.close_topmost():
+		if landmark_board_overlay.close_topmost():
 			return
 
 
@@ -269,17 +274,18 @@ func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 	camera.animate_zoom_to(FOCUS_ZOOM)
 	camera.animate_pitch_to(FOCUS_PITCH_DEGREES)
 
-	landmark_display.show_landmark(marker, camera)
 	landmark_board_overlay.show_for(marker, camera)
 	if marker.in_range:
 		await _record_visit(marker)
 
 
-func _on_landmark_display_closed() -> void:
+# Named for the board overlay's closed signal -- it already hides itself
+# before emitting, so this only needs to restore the rest of the focus
+# state (the marker's own selected look, the camera).
+func _on_board_overlay_closed() -> void:
 	if focused_marker:
 		focused_marker.set_selected(false)
 	focused_marker = null
-	landmark_board_overlay.hide_overlay()
 	camera.locked = false
 	camera.yaw_degrees = _yaw_before_focus
 	camera.animate_zoom_to(_zoom_before_focus)
@@ -318,14 +324,12 @@ func _on_community_recommendations_button_pressed() -> void:
 	community_recommendations_ui.show_recommendations()
 
 
-# A direct in-world collect (tapping a card on the physical sign, or the
-# quick-collect button) changes this Landmark's own card slots without
-# either UI ever being involved -- if one happens to be open on this same
-# Landmark right now, its badges/slot list are now stale until told to
-# refresh.
+# A direct in-world collect (tapping a card on the physical sign) changes
+# this Landmark's own card slots without the board overlay ever being
+# involved -- if it happens to be open on this same Landmark right now,
+# its badges are now stale until told to refresh.
 func _on_marker_card_state_changed(marker: LandmarkMarker) -> void:
 	landmark_board_overlay.refresh_if_showing(marker)
-	landmark_display.refresh_card_slots_if_showing(marker)
 
 
 func _on_community_center_marker_tapped(marker: CommunityCenterMarker) -> void:

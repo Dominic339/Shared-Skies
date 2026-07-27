@@ -1,10 +1,12 @@
 extends CanvasLayer
 
-# "Recommended Places" board -- the top most-recommended Landmarks in a
-# Community, read-only. Recommending itself now happens from inside a
-# visited Landmark's own info panel (landmark_display_ui.gd), not here
-# -- this screen is purely the second Community Center board GPT/Dominic
-# described, showing the ranking that produces.
+# "Recommended Places" board -- the top most-Favorited Landmarks in a
+# Community, read-only. Favoriting itself now happens from the board
+# overlay of a visited Landmark (landmark_board_overlay.gd's star button,
+# still backed by the same recommend_landmark()/unrecommend_landmark()
+# vote this screen ranks), not here -- this screen is purely the second
+# Community Center board GPT/Dominic described, showing the ranking that
+# produces.
 #
 # How many entries show is community_centers.recommendation_slot_count,
 # not a number hardcoded here -- Community Centers are already planned

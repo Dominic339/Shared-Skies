@@ -5,7 +5,7 @@ extends CanvasLayer
 # Atlas (places visited) and Postcards (souvenirs from your own first
 # visits). Mirrors postcards_ui.gd's structure. Cards you've LEFT for
 # others aren't shown here -- their state already lives on the
-# Landmark's own card holders (see landmark_display_ui.gd).
+# Landmark's own card holders (see landmark_board_overlay.gd).
 
 signal closed
 

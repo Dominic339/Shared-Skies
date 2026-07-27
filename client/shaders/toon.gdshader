@@ -71,7 +71,7 @@ uniform bool use_flat_face_normal = false;
 // flat floor under the banding, not a real fill light aimed at the camera
 // (this shader has no notion of which side is "the front" a player is
 // looking at), but it guarantees no face ever goes unreadably dark.
-uniform float min_shade : hint_range(0.0, 1.0) = 0.35;
+uniform float min_shade : hint_range(0.0, 1.0) = 0.18;
 
 void fragment() {
 	vec4 base_color = albedo_tint;

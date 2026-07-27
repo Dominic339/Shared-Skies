@@ -254,6 +254,16 @@ func _rebuild_card_visuals() -> void:
 		var holder: Node3D = card_holders.get_child(i)
 		var existing_card := holder.get_node_or_null("Card")
 		if existing_card:
+			# queue_free() is deferred -- the freed node still holds the name
+			# "Card" until the end of the frame, so the fresh card added
+			# below would get silently renamed to "Card2" by Godot's name
+			# collision handling. That's exactly why the collect animation
+			# only ever played once: every _collect_card() after the first
+			# looked up holder.get_node_or_null("Card") and found this
+			# already-freed node instead of the real, currently-visible one.
+			# Renaming it first frees up the name immediately (renames are
+			# synchronous even though the actual deletion isn't).
+			existing_card.name = "CardPendingFree"
 			existing_card.queue_free()
 
 		var row: Variant = _slot_row_for_index(i)
@@ -265,8 +275,7 @@ func _rebuild_card_visuals() -> void:
 		holder.add_child(card)
 		card.position = CARD_FIT_POSITION
 		# Own card: gold, so you can spot it as yours. Someone else's card
-		# you've already collected your copy of: dimmed, same convention as
-		# landmark_display_ui.gd's popup (COLLECTED_COLOR) -- still a real
+		# you've already collected your copy of: dimmed -- still a real
 		# object other players can still collect from, just not you again.
 		# Anything else here is a fresh, collectible card in its natural color.
 		if row.get("is_own_card", false):
