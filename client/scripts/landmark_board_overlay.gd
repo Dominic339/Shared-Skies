@@ -91,7 +91,7 @@ const SIDE_GAP_FROM_SIGN := 12.0
 # Extra drop below the sign's structure-top anchor, on top of the
 # top-anchoring below -- pushes the whole panel further down the screen,
 # away from the corner UI/popup crowding near the anchor height itself.
-const VERTICAL_DROP := 84.0
+const VERTICAL_DROP := 76.0
 
 
 func _update_position() -> void:
