@@ -94,10 +94,27 @@ void fragment() {
 	}
 }
 
+// Small, fixed epsilon nudging the quantization input away from an exact
+// band boundary before it's floored. For a single flat face with one true
+// normal, dot(NORMAL, LIGHT) is mathematically identical everywhere on
+// that face -- but a sign's rotation determines this value, and for
+// *specific* rotations it can land almost exactly on a 1/bands boundary
+// (e.g. very close to 0.333 for 3 bands). Right at that knife-edge, tiny
+// floating-point noise between a face's two triangles (different
+// interpolation paths even for nominally identical inputs) can round
+// floor() to *different* integer bands on each triangle -- a sharp,
+// up-to-1/bands brightness jump splitting one visually flat face into two
+// differently shaded triangles. This only shows up on whichever signs
+// happen to be rotated so a face's angle sits near that threshold, which
+// is exactly why it only appeared on certain signs at certain angles
+// rather than everywhere. The epsilon decisively picks a side of the
+// boundary regardless of that noise, instead of leaving it to chance.
+const float BAND_BOUNDARY_EPSILON = 0.002;
+
 void light() {
 	float ndotl = dot(NORMAL, LIGHT);
 	float bands = float(light_bands);
-	float banded = floor(ndotl * bands) / bands;
+	float banded = floor(ndotl * bands + BAND_BOUNDARY_EPSILON) / bands;
 	float next_band = banded + 1.0 / bands;
 	float t = smoothstep(banded, banded + band_softness, ndotl);
 	float shade = clamp(mix(banded, next_band, t), min_shade, 1.0);
