@@ -39,8 +39,6 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var mailbox_ui: CanvasLayer = $MailboxUI
 @onready var museum_button: Button = $MuseumButton/Button
 @onready var museum_ui: CanvasLayer = $MuseumUI
-@onready var rumors_button: Button = $RumorsButton/Button
-@onready var rumors_ui: CanvasLayer = $RumorsUI
 @onready var community_recommendations_button: Button = $CommunityRecommendationsButton/Button
 @onready var community_recommendations_ui: CanvasLayer = $CommunityRecommendationsUI
 @onready var community_center_markers: Node3D = $CommunityCenterMarkers
@@ -65,7 +63,6 @@ func _ready() -> void:
 	community_board_button.pressed.connect(_on_community_board_button_pressed)
 	mailbox_button.pressed.connect(_on_mailbox_button_pressed)
 	museum_button.pressed.connect(_on_museum_button_pressed)
-	rumors_button.pressed.connect(_on_rumors_button_pressed)
 	community_recommendations_button.pressed.connect(_on_community_recommendations_button_pressed)
 	community_center_ui.setup_links(
 		community_board_ui, museum_ui, mailbox_ui, community_recommendations_ui
@@ -119,8 +116,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		if mailbox_ui.close_topmost():
 			return
 		if museum_ui.close_topmost():
-			return
-		if rumors_ui.close_topmost():
 			return
 		if community_recommendations_ui.close_topmost():
 			return
@@ -309,10 +304,6 @@ func _on_mailbox_button_pressed() -> void:
 
 func _on_museum_button_pressed() -> void:
 	museum_ui.show_museum()
-
-
-func _on_rumors_button_pressed() -> void:
-	rumors_ui.show_rumors()
 
 
 func _on_community_recommendations_button_pressed() -> void:

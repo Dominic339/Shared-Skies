@@ -13,7 +13,6 @@
 [ext_resource type="Script" path="res://scripts/community_board_ui.gd" id="11"]
 [ext_resource type="Script" path="res://scripts/mailbox_ui.gd" id="12"]
 [ext_resource type="Script" path="res://scripts/museum_ui.gd" id="13"]
-[ext_resource type="Script" path="res://scripts/rumors_ui.gd" id="14"]
 [ext_resource type="Script" path="res://scripts/community_recommendations_ui.gd" id="15"]
 [ext_resource type="Script" path="res://scripts/community_center_ui.gd" id="16"]
 [ext_resource type="Script" path="res://scripts/nearby_ui.gd" id="17"]
@@ -120,6 +119,12 @@ text = "LM000000"
 
 [node name="CardSlotsContainer" type="VBoxContainer" parent="LandmarkDisplay/Panel/VBoxContainer"]
 
+[node name="RecommendButton" type="Button" parent="LandmarkDisplay/Panel/VBoxContainer"]
+text = "Recommend This Place"
+
+[node name="RecommendStatusLabel" type="Label" parent="LandmarkDisplay/Panel/VBoxContainer"]
+text = ""
+
 [node name="CloseButton" type="Button" parent="LandmarkDisplay/Panel/VBoxContainer"]
 text = "Close"
 
@@ -186,15 +191,6 @@ offset_right = 1064.0
 offset_bottom = 344.0
 text = "Museum"
 
-[node name="RumorsButton" type="CanvasLayer" parent="."]
-
-[node name="Button" type="Button" parent="RumorsButton"]
-offset_left = 900.0
-offset_top = 352.0
-offset_right = 1064.0
-offset_bottom = 392.0
-text = "Rumors"
-
 [node name="CommunityRecommendationsButton" type="CanvasLayer" parent="."]
 
 [node name="Button" type="Button" parent="CommunityRecommendationsButton"]
@@ -202,7 +198,7 @@ offset_left = 900.0
 offset_top = 400.0
 offset_right = 1064.0
 offset_bottom = 440.0
-text = "Recommendations"
+text = "Recommended Places"
 
 [node name="AtlasUI" type="CanvasLayer" parent="."]
 script = ExtResource("6")
@@ -426,13 +422,98 @@ offset_bottom = 1400.0
 theme_override_font_sizes/font_size = 32
 text = "Community Board"
 
+[node name="BountiesLabel" type="Label" parent="CommunityBoardUI/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 22
+text = "Bounties"
+
 [node name="ScrollContainer" type="ScrollContainer" parent="CommunityBoardUI/Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 260)
 size_flags_vertical = 3
 
 [node name="EntriesContainer" type="VBoxContainer" parent="CommunityBoardUI/Panel/VBoxContainer/ScrollContainer"]
 size_flags_horizontal = 3
 
+[node name="RumorQuestsLabel" type="Label" parent="CommunityBoardUI/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 22
+text = "Local Rumors -- Investigate a Hot Zone"
+
+[node name="RumorScrollContainer" type="ScrollContainer" parent="CommunityBoardUI/Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 260)
+size_flags_vertical = 3
+
+[node name="RumorEntriesContainer" type="VBoxContainer" parent="CommunityBoardUI/Panel/VBoxContainer/RumorScrollContainer"]
+size_flags_horizontal = 3
+
+[node name="RumorSubmitControls" type="VBoxContainer" parent="CommunityBoardUI/Panel/VBoxContainer"]
+
+[node name="RumorNameEdit" type="LineEdit" parent="CommunityBoardUI/Panel/VBoxContainer/RumorSubmitControls"]
+placeholder_text = "Rumor name"
+
+[node name="RumorDescriptionEdit" type="LineEdit" parent="CommunityBoardUI/Panel/VBoxContainer/RumorSubmitControls"]
+placeholder_text = "Description / useful details"
+
+[node name="RumorCategoryOption" type="OptionButton" parent="CommunityBoardUI/Panel/VBoxContainer/RumorSubmitControls"]
+
+[node name="RumorPhotoOption" type="OptionButton" parent="CommunityBoardUI/Panel/VBoxContainer/RumorSubmitControls"]
+tooltip_text = "Attach Photo (stub -- picks a bundled placeholder until a real device camera build exists)"
+
+[node name="RumorNudgeHint" type="Label" parent="CommunityBoardUI/Panel/VBoxContainer/RumorSubmitControls"]
+text = "Fine-tune location: 0m N, 0m E"
+
+[node name="RumorNudgeNorthSlider" type="HSlider" parent="CommunityBoardUI/Panel/VBoxContainer/RumorSubmitControls"]
+tooltip_text = "North/South offset (meters)"
+step = 1.0
+
+[node name="RumorNudgeEastSlider" type="HSlider" parent="CommunityBoardUI/Panel/VBoxContainer/RumorSubmitControls"]
+tooltip_text = "East/West offset (meters)"
+step = 1.0
+
+[node name="RumorSubmitButton" type="Button" parent="CommunityBoardUI/Panel/VBoxContainer/RumorSubmitControls"]
+text = "Submit Rumor"
+
+[node name="RumorStatusLabel" type="Label" parent="CommunityBoardUI/Panel/VBoxContainer"]
+text = ""
+
 [node name="CloseButton" type="Button" parent="CommunityBoardUI/Panel/VBoxContainer"]
+text = "Close"
+
+[node name="RumorReportPanel" type="PanelContainer" parent="CommunityBoardUI"]
+offset_left = 200.0
+offset_top = 500.0
+offset_right = 880.0
+offset_bottom = 780.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CommunityBoardUI/RumorReportPanel"]
+
+[node name="TitleLabel" type="Label" parent="CommunityBoardUI/RumorReportPanel/VBoxContainer"]
+theme_override_font_sizes/font_size = 24
+text = "Report Rumor"
+
+[node name="ReportCategoryOption" type="OptionButton" parent="CommunityBoardUI/RumorReportPanel/VBoxContainer"]
+
+[node name="ReportDetailsEdit" type="LineEdit" parent="CommunityBoardUI/RumorReportPanel/VBoxContainer"]
+placeholder_text = "Details (optional)"
+
+[node name="ReportSubmitButton" type="Button" parent="CommunityBoardUI/RumorReportPanel/VBoxContainer"]
+text = "Submit Report"
+
+[node name="CloseButton" type="Button" parent="CommunityBoardUI/RumorReportPanel/VBoxContainer"]
+text = "Close"
+
+[node name="PhotoPreviewPanel" type="PanelContainer" parent="CommunityBoardUI"]
+offset_left = 240.0
+offset_top = 560.0
+offset_right = 840.0
+offset_bottom = 1060.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CommunityBoardUI/PhotoPreviewPanel"]
+
+[node name="PhotoTexture" type="TextureRect" parent="CommunityBoardUI/PhotoPreviewPanel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 380)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CloseButton" type="Button" parent="CommunityBoardUI/PhotoPreviewPanel/VBoxContainer"]
 text = "Close"
 
 [node name="MailboxUI" type="CanvasLayer" parent="."]
@@ -506,69 +587,6 @@ text = ""
 [node name="CloseButton" type="Button" parent="MuseumUI/Panel/VBoxContainer"]
 text = "Close"
 
-[node name="RumorsUI" type="CanvasLayer" parent="."]
-script = ExtResource("14")
-
-[node name="Panel" type="PanelContainer" parent="RumorsUI"]
-offset_left = 60.0
-offset_top = 220.0
-offset_right = 1020.0
-offset_bottom = 1400.0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="RumorsUI/Panel"]
-
-[node name="TitleLabel" type="Label" parent="RumorsUI/Panel/VBoxContainer"]
-theme_override_font_sizes/font_size = 32
-text = "Rumors"
-
-[node name="SubmitControls" type="VBoxContainer" parent="RumorsUI/Panel/VBoxContainer"]
-
-[node name="NameEdit" type="LineEdit" parent="RumorsUI/Panel/VBoxContainer/SubmitControls"]
-placeholder_text = "Rumor name"
-
-[node name="DescriptionEdit" type="LineEdit" parent="RumorsUI/Panel/VBoxContainer/SubmitControls"]
-placeholder_text = "Description"
-
-[node name="CategoryOption" type="OptionButton" parent="RumorsUI/Panel/VBoxContainer/SubmitControls"]
-
-[node name="SubmitButton" type="Button" parent="RumorsUI/Panel/VBoxContainer/SubmitControls"]
-text = "Submit Rumor"
-
-[node name="ScrollContainer" type="ScrollContainer" parent="RumorsUI/Panel/VBoxContainer"]
-size_flags_vertical = 3
-
-[node name="EntriesContainer" type="VBoxContainer" parent="RumorsUI/Panel/VBoxContainer/ScrollContainer"]
-size_flags_horizontal = 3
-
-[node name="StatusLabel" type="Label" parent="RumorsUI/Panel/VBoxContainer"]
-text = ""
-
-[node name="CloseButton" type="Button" parent="RumorsUI/Panel/VBoxContainer"]
-text = "Close"
-
-[node name="ReportPanel" type="PanelContainer" parent="RumorsUI"]
-offset_left = 200.0
-offset_top = 500.0
-offset_right = 880.0
-offset_bottom = 780.0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="RumorsUI/ReportPanel"]
-
-[node name="TitleLabel" type="Label" parent="RumorsUI/ReportPanel/VBoxContainer"]
-theme_override_font_sizes/font_size = 24
-text = "Report Rumor"
-
-[node name="ReportCategoryOption" type="OptionButton" parent="RumorsUI/ReportPanel/VBoxContainer"]
-
-[node name="ReportDetailsEdit" type="LineEdit" parent="RumorsUI/ReportPanel/VBoxContainer"]
-placeholder_text = "Details (optional)"
-
-[node name="ReportSubmitButton" type="Button" parent="RumorsUI/ReportPanel/VBoxContainer"]
-text = "Submit Report"
-
-[node name="CloseButton" type="Button" parent="RumorsUI/ReportPanel/VBoxContainer"]
-text = "Close"
-
 [node name="CommunityRecommendationsUI" type="CanvasLayer" parent="."]
 script = ExtResource("15")
 
@@ -582,7 +600,7 @@ offset_bottom = 1400.0
 
 [node name="TitleLabel" type="Label" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
 theme_override_font_sizes/font_size = 32
-text = "Community Recommendations"
+text = "Recommended Places"
 
 [node name="CommunityOption" type="OptionButton" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
 
@@ -591,19 +609,6 @@ size_flags_vertical = 3
 
 [node name="EntriesContainer" type="VBoxContainer" parent="CommunityRecommendationsUI/Panel/VBoxContainer/ScrollContainer"]
 size_flags_horizontal = 3
-
-[node name="RecommendControls" type="VBoxContainer" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
-
-[node name="LandmarkOption" type="OptionButton" parent="CommunityRecommendationsUI/Panel/VBoxContainer/RecommendControls"]
-
-[node name="BodyEdit" type="LineEdit" parent="CommunityRecommendationsUI/Panel/VBoxContainer/RecommendControls"]
-placeholder_text = "Why is this worth visiting?"
-
-[node name="SubmitButton" type="Button" parent="CommunityRecommendationsUI/Panel/VBoxContainer/RecommendControls"]
-text = "Recommend"
-
-[node name="StatusLabel" type="Label" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
-text = ""
 
 [node name="CloseButton" type="Button" parent="CommunityRecommendationsUI/Panel/VBoxContainer"]
 text = "Close"
@@ -633,7 +638,7 @@ text = "Museum"
 text = "Post Office / Mailbox"
 
 [node name="RecommendationsButton" type="Button" parent="CommunityCenterUI/Panel/VBoxContainer"]
-text = "Community Recommendations"
+text = "Recommended Places"
 
 [node name="StampDeskButton" type="Button" parent="CommunityCenterUI/Panel/VBoxContainer"]
 text = "Stamp Desk (coming soon)"

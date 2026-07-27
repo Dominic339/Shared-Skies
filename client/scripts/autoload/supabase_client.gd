@@ -144,6 +144,71 @@ func call_rpc(function_name: String, params: Dictionary = {}) -> Variant:
 	return await _request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(params))
 
 
+# Uploads raw bytes to a private Storage bucket (e.g. a Rumor's
+# attached photo, see the rumor-photos bucket) -- returns the object
+# path on success, or "" on failure. A separate method from _request()
+# rather than reusing it, since image bytes aren't valid UTF-8 text and
+# need request_raw()'s PackedByteArray body instead of a JSON string one.
+func upload_file(bucket: String, path: String, bytes: PackedByteArray, content_type: String) -> String:
+	var headers := [
+		"apikey: " + SUPABASE_ANON_KEY,
+		"Authorization: Bearer " + access_token,
+		"Content-Type: " + content_type,
+	]
+	var url := "%s/storage/v1/object/%s/%s" % [SUPABASE_URL, bucket, path]
+
+	var http_request := HTTPRequest.new()
+	add_child(http_request)
+	var error := http_request.request_raw(url, headers, HTTPClient.METHOD_POST, bytes)
+	if error != OK:
+		http_request.queue_free()
+		push_error("Supabase upload failed to send (%s): %s" % [url, error])
+		return ""
+
+	var result: Array = await http_request.request_completed
+	http_request.queue_free()
+
+	var response_code: int = result[1]
+	if response_code >= 400:
+		var body_bytes: PackedByteArray = result[3]
+		push_error("Supabase upload failed (%d) at %s: %s" % [
+			response_code, url, body_bytes.get_string_from_utf8()
+		])
+		return ""
+
+	return path
+
+
+# Downloads a private Storage object's raw bytes (e.g. to display a
+# Rumor's attached photo) -- any authenticated player can read from the
+# rumor-photos bucket (see its RLS policy), not gated further per-object.
+func download_file(bucket: String, path: String) -> PackedByteArray:
+	var headers := [
+		"apikey: " + SUPABASE_ANON_KEY,
+		"Authorization: Bearer " + access_token,
+	]
+	var url := "%s/storage/v1/object/authenticated/%s/%s" % [SUPABASE_URL, bucket, path]
+
+	var http_request := HTTPRequest.new()
+	add_child(http_request)
+	var error := http_request.request(url, headers, HTTPClient.METHOD_GET)
+	if error != OK:
+		http_request.queue_free()
+		push_error("Supabase download failed to send (%s): %s" % [url, error])
+		return PackedByteArray()
+
+	var result: Array = await http_request.request_completed
+	http_request.queue_free()
+
+	var response_code: int = result[1]
+	var body_bytes: PackedByteArray = result[3]
+	if response_code >= 400:
+		push_error("Supabase download failed (%d) at %s" % [response_code, url])
+		return PackedByteArray()
+
+	return body_bytes
+
+
 func _request(url: String, headers: PackedStringArray, method: HTTPClient.Method, body: String = "") -> Variant:
 	var http_request := HTTPRequest.new()
 	add_child(http_request)

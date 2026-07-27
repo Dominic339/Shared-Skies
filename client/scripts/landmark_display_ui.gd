@@ -14,14 +14,18 @@ const SCREEN_MARGIN_ABOVE_SIGN := 40.0
 @onready var category_label: Label = $Panel/VBoxContainer/CategoryLabel
 @onready var code_label: Label = $Panel/VBoxContainer/CodeLabel
 @onready var card_slots_container: VBoxContainer = $Panel/VBoxContainer/CardSlotsContainer
+@onready var recommend_button: Button = $Panel/VBoxContainer/RecommendButton
+@onready var recommend_status_label: Label = $Panel/VBoxContainer/RecommendStatusLabel
 @onready var close_button: Button = $Panel/VBoxContainer/CloseButton
 
 var _camera: Camera3D = null
 var _marker: LandmarkMarker = null
+var _has_recommended: bool = false
 
 
 func _ready() -> void:
 	close_button.pressed.connect(_on_close_pressed)
+	recommend_button.pressed.connect(_on_recommend_pressed)
 	hide()
 
 
@@ -34,6 +38,7 @@ func show_landmark(marker: LandmarkMarker, camera: Camera3D) -> void:
 	show()
 	_update_position()
 	await _load_card_slots()
+	await _load_recommendation_state()
 
 
 func _process(_delta: float) -> void:
@@ -127,6 +132,49 @@ func _load_card_slots() -> void:
 	# hit earlier, avoided here by not hardcoding a height at all.
 	panel.reset_size()
 	_update_position()
+
+
+# "Recommend this place" is a simple unique vote made from right here
+# (you're already looking at the Landmark), not a separate pick-from-a-
+# list screen -- requires having actually visited it first, one active
+# vote per player per Landmark (both checked server-side too, see
+# recommend_landmark()/unrecommend_landmark()). Text reviews are a
+# separate, not-yet-built feature; this is purely the ranking signal
+# that feeds the Community Center's Recommended Places board.
+func _load_recommendation_state() -> void:
+	recommend_status_label.text = ""
+	if _marker == null:
+		return
+
+	recommend_button.disabled = not _marker.visited
+	if not _marker.visited:
+		recommend_status_label.text = "Visit this Landmark before recommending it."
+
+	var rows: Array = await SupabaseClient.get_table(
+		"community_recommendations_view",
+		(
+			"select=id&landmark_id=eq.%s&author_wayfinder_id=eq.%s&status=eq.published"
+			% [_marker.landmark_id, SupabaseClient.user_id]
+		)
+	)
+	_has_recommended = not rows.is_empty()
+	recommend_button.text = "Remove Recommendation" if _has_recommended else "Recommend This Place"
+
+
+func _on_recommend_pressed() -> void:
+	if _marker == null:
+		return
+
+	var result: Variant
+	if _has_recommended:
+		result = await SupabaseClient.call_rpc("unrecommend_landmark", {"p_landmark_id": _marker.landmark_id})
+	else:
+		result = await SupabaseClient.call_rpc("recommend_landmark", {"p_landmark_id": _marker.landmark_id})
+
+	if result is Dictionary and result.is_empty():
+		recommend_status_label.text = SupabaseClient.last_error_message
+	else:
+		await _load_recommendation_state()
 
 
 func _on_leave_card_pressed(slot_id: String) -> void:
