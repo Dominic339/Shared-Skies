@@ -51,6 +51,7 @@ var selected: bool = false
 @onready var name_label: Label3D = $NameLabel3D
 @onready var sign_model: Node3D = $SignModel
 @onready var card_holders: Node3D = $CardHolders
+@onready var wind_swirl: GPUParticles3D = $WindSwirl
 
 const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
@@ -177,6 +178,12 @@ func _spawn_card_holders(slot_count: int) -> void:
 
 
 func set_in_range(value: bool) -> void:
+	# Rising edge only -- a one-shot burst when you actually arrive, not a
+	# permanent ambient loop (was always emitting before, regardless of
+	# distance). Re-entering range later (walk away, come back) plays it
+	# again via restart(), same as the first arrival.
+	if value and not in_range:
+		wind_swirl.restart()
 	in_range = value
 	in_range_indicator.visible = value
 
