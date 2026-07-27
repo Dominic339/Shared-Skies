@@ -219,6 +219,11 @@ func _load_landmarks() -> void:
 		marker.position = GeoProjection.to_local(lat, lng)
 		marker.tapped.connect(_on_landmark_marker_tapped)
 		markers_by_landmark_id[marker.landmark_id] = marker
+		# Not awaited -- the board face (name/photo/description baked
+		# onto the physical sign) is supplementary presentation, not
+		# something the rest of boot should wait on. Runs in the
+		# background per marker instead.
+		marker.load_board_face()
 
 
 func _load_existing_visits() -> void:
@@ -333,5 +338,6 @@ func _record_visit(marker: LandmarkMarker) -> void:
 			marker.set_visited(false)
 	elif is_first:
 		print("Visited %s for the first time!" % marker.landmark_name)
+		marker.load_board_face()  # refreshes the board's Visited badge
 	else:
 		print("Visited %s again." % marker.landmark_name)

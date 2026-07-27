@@ -13,6 +13,7 @@ const SCREEN_MARGIN_ABOVE_SIGN := 40.0
 @onready var name_label: Label = $Panel/VBoxContainer/NameLabel
 @onready var category_label: Label = $Panel/VBoxContainer/CategoryLabel
 @onready var code_label: Label = $Panel/VBoxContainer/CodeLabel
+@onready var description_label: Label = $Panel/VBoxContainer/DescriptionLabel
 @onready var card_slots_container: VBoxContainer = $Panel/VBoxContainer/CardSlotsContainer
 @onready var recommend_button: Button = $Panel/VBoxContainer/RecommendButton
 @onready var recommend_status_label: Label = $Panel/VBoxContainer/RecommendStatusLabel
@@ -37,8 +38,35 @@ func show_landmark(marker: LandmarkMarker, camera: Camera3D) -> void:
 	code_label.text = marker.code
 	show()
 	_update_position()
+	await _load_description()
 	await _load_card_slots()
 	await _load_recommendation_state()
+
+
+# The board's own physical sign only ever shows the SHORT description
+# (see landmark_board_face.gd) -- tapping the sign to open this panel
+# is "reading more": show the long version outright here rather than
+# adding a separate expand/collapse toggle, since there's already
+# plenty of room in this popup and no board-face space constraint to
+# work around.
+func _load_description() -> void:
+	description_label.text = ""
+	if _marker == null:
+		return
+
+	var rows: Array = await SupabaseClient.get_table(
+		"landmark_board_view",
+		"select=short_description,long_description&id=eq.%s" % _marker.landmark_id
+	)
+	if rows.is_empty():
+		return
+
+	var long_description: Variant = rows[0].get("long_description")
+	var short_description: Variant = rows[0].get("short_description")
+	if long_description != null and long_description != "":
+		description_label.text = long_description
+	elif short_description != null and short_description != "":
+		description_label.text = short_description
 
 
 func _process(_delta: float) -> void:
@@ -175,6 +203,7 @@ func _on_recommend_pressed() -> void:
 		recommend_status_label.text = SupabaseClient.last_error_message
 	else:
 		await _load_recommendation_state()
+		_marker.load_board_face()  # refreshes the board's Recommended badge
 
 
 func _on_leave_card_pressed(slot_id: String) -> void:
@@ -185,6 +214,7 @@ func _on_leave_card_pressed(slot_id: String) -> void:
 	if row.is_empty():
 		print("Failed to leave card in slot %s" % slot_id)
 	await _load_card_slots()
+	_marker.load_board_face()  # refreshes the board's "Card available" badge
 
 
 func _on_collect_card_pressed(placement_id: String) -> void:
@@ -195,6 +225,7 @@ func _on_collect_card_pressed(placement_id: String) -> void:
 	if row.is_empty():
 		print("Failed to collect card for placement %s" % placement_id)
 	await _load_card_slots()
+	_marker.load_board_face()  # refreshes the board's "Card available" badge
 
 
 func _on_close_pressed() -> void:

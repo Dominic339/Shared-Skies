@@ -118,6 +118,10 @@ text = "Category: --"
 [node name="CodeLabel" type="Label" parent="LandmarkDisplay/Panel/VBoxContainer"]
 text = "LM000000"
 
+[node name="DescriptionLabel" type="Label" parent="LandmarkDisplay/Panel/VBoxContainer"]
+autowrap_mode = 3
+text = ""
+
 [node name="CardSlotsContainer" type="VBoxContainer" parent="LandmarkDisplay/Panel/VBoxContainer"]
 
 [node name="RecommendButton" type="Button" parent="LandmarkDisplay/Panel/VBoxContainer"]
