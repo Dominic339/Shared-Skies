@@ -152,20 +152,20 @@ script = ExtResource("19")
 theme_override_styles/panel = SubResource("StyleBoxEmpty_Transparent")
 offset_left = 0.0
 offset_top = 0.0
-offset_right = 760.0
-offset_bottom = 332.0
+offset_right = 820.0
+offset_bottom = 420.0
 
 [node name="HeaderPanel" type="Panel" parent="LandmarkBoardOverlay/Panel"]
 theme_override_styles/panel = SubResource("StyleBoxFlat_Header")
 offset_left = 0.0
 offset_top = 0.0
-offset_right = 760.0
+offset_right = 820.0
 offset_bottom = 56.0
 
 [node name="TitleLabel" type="Label" parent="LandmarkBoardOverlay/Panel/HeaderPanel"]
 offset_left = 14.0
 offset_top = 4.0
-offset_right = 746.0
+offset_right = 806.0
 offset_bottom = 34.0
 theme_override_font_sizes/font_size = 22
 theme_override_colors/font_color = Color(0.96, 0.93, 0.85, 1)
@@ -175,7 +175,7 @@ text = "Landmark Name"
 [node name="SubtitleLabel" type="Label" parent="LandmarkBoardOverlay/Panel/HeaderPanel"]
 offset_left = 14.0
 offset_top = 34.0
-offset_right = 746.0
+offset_right = 806.0
 offset_bottom = 52.0
 theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.78, 0.85, 0.75, 1)
@@ -185,15 +185,15 @@ text = "Category · Community"
 offset_left = 16.0
 offset_top = 68.0
 offset_right = 316.0
-offset_bottom = 258.0
+offset_bottom = 404.0
 expand_mode = 1
 stretch_mode = 6
 
 [node name="DescriptionLabel" type="Label" parent="LandmarkBoardOverlay/Panel"]
 offset_left = 332.0
 offset_top = 68.0
-offset_right = 744.0
-offset_bottom = 258.0
+offset_right = 804.0
+offset_bottom = 240.0
 theme_override_colors/font_color = Color(0.95, 0.94, 0.9, 1)
 theme_override_colors/font_outline_color = Color(0.08, 0.06, 0.04, 1)
 theme_override_constants/outline_size = 5
@@ -203,18 +203,18 @@ clip_text = true
 text = "Short description goes here."
 
 [node name="TagRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel"]
-offset_left = 16.0
-offset_top = 270.0
-offset_right = 380.0
-offset_bottom = 324.0
+offset_left = 332.0
+offset_top = 250.0
+offset_right = 560.0
+offset_bottom = 404.0
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 
 [node name="BadgeRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel"]
-offset_left = 396.0
-offset_top = 270.0
-offset_right = 744.0
-offset_bottom = 324.0
+offset_left = 576.0
+offset_top = 250.0
+offset_right = 804.0
+offset_bottom = 404.0
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 
