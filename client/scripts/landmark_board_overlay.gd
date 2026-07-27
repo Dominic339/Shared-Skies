@@ -86,12 +86,12 @@ func _process(_delta: float) -> void:
 # Only a fraction of the panel's width sits to the left of the anchor
 # (not the full width) -- keeps it mostly beside the sign rather than
 # pushed entirely off to the left of it.
-const LEFT_OVERLAP_FRACTION := 0.4
-const SIDE_GAP_FROM_SIGN := 0.0
+const LEFT_OVERLAP_FRACTION := 0.48
+const SIDE_GAP_FROM_SIGN := 6.0
 # Extra drop below the sign's structure-top anchor, on top of the
 # top-anchoring below -- pushes the whole panel further down the screen,
 # away from the corner UI/popup crowding near the anchor height itself.
-const VERTICAL_DROP := 110.0
+const VERTICAL_DROP := 90.0
 
 
 func _update_position() -> void:
