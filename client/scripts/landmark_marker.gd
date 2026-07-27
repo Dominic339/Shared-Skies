@@ -156,17 +156,15 @@ func _apply_toon_demo_material(node: Node) -> void:
 			)
 			material.set_shader_parameter("use_vertex_color", false)
 			material.set_shader_parameter("light_bands", 3)
-			# Forcing a flat per-face normal (use_flat_face_normal) briefly
-			# fixed the diagonal seam a flat board's two triangles could
-			# show, but it applies to every surface on the sign uniformly
-			# -- including whichever parts are actually curved/beveled and
-			# were relying on their real smoothed normals, which is what
-			# made the whole sign read as choppy/faceted afterward. A
-			# softer band transition hides the same original seam (a
-			# small normal difference no longer lands in two visibly
-			# different bands) without replacing any surface's real
-			# normal, curved or flat.
-			material.set_shader_parameter("band_softness", 0.4)
+			# Neither this nor use_flat_face_normal were ever the real fix
+			# for the "dark triangle on a flat board" artifact -- direct
+			# inspection of landmark_sign.glb's normals (pygltflib) shows
+			# every face already has perfectly clean, axis-aligned
+			# flat-shaded normals. The actual cause was shadow acne on the
+			# DirectionalLight3D itself (see Main.tscn); back to the
+			# original crisp band transition now that the real cause is
+			# fixed at the light instead of papered over here.
+			material.set_shader_parameter("band_softness", 0.15)
 			mesh_instance.set_surface_override_material(surface_idx, material)
 	for child in node.get_children():
 		_apply_toon_demo_material(child)
