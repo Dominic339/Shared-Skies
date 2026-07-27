@@ -180,6 +180,18 @@ func _apply_toon_demo_material(node: Node) -> void:
 			# real edge can show, instead of chasing a bug that isn't there.
 			material.set_shader_parameter("light_bands", 5)
 			material.set_shader_parameter("band_softness", 0.3)
+			# Confirmed by working out the actual math: this sign's boxy,
+			# axis-aligned geometry combined with the scene's one fixed
+			# DirectionalLight3D produces ndotl swings from about +0.87 to
+			# -0.87 across its own real faces (e.g. the thin trim strip's
+			# -X face sits at ndotl=-0.25, clamped straight to whatever
+			# min_shade was). More bands/softness only smooths the
+			# transition BETWEEN faces -- it can't stop a legitimately
+			# shadowed face from looking like a hole next to a brightly lit
+			# neighbor when the floor itself is this low. Raising it
+			# further keeps every face within a much narrower range of its
+			# neighbors regardless of which way it happens to face.
+			material.set_shader_parameter("min_shade", 0.55)
 			# Kept even though it didn't turn out to be the real fix -- it's
 			# still the mathematically correct way to compute a flat face's
 			# normal (this model has no curved surfaces to distort), so
