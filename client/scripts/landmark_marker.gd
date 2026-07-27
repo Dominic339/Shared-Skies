@@ -52,8 +52,6 @@ var selected: bool = false
 @onready var sign_model: Node3D = $SignModel
 @onready var card_holders: Node3D = $CardHolders
 @onready var wind_swirl: GPUParticles3D = $WindSwirl
-@onready var board_face: SubViewport = $LandmarkBoardFace
-@onready var board_face_quad: MeshInstance3D = $BoardFaceQuad
 
 const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
@@ -177,45 +175,6 @@ func _spawn_card_holders(slot_count: int) -> void:
 		# holder), and card.position = Vector3(0.002, 0.03, 0) to sit
 		# correctly in the holder's pocket. Reuse these exact values when
 		# building real card placement.
-
-
-# Called once by main.gd right after setup(), separately from it (not
-# folded in) since this needs its own network round-trip -- setup()
-# stays synchronous so every other caller/test of it is unaffected.
-func load_board_face() -> void:
-	var rows: Array = await SupabaseClient.get_table(
-		"landmark_board_view",
-		(
-			"select=id,name,category,community_name,short_description,long_description,"
-			+ "tags,cover_image_url,visited,recommendation_count,recommended_by_me"
-			+ "&id=eq.%s" % landmark_id
-		)
-	)
-	if rows.is_empty():
-		return
-
-	var has_uncollected_card := await _has_uncollected_card()
-	board_face.render_board(rows[0], has_uncollected_card)
-
-	var board_material := board_face_quad.get_surface_override_material(0) as StandardMaterial3D
-	board_material.albedo_texture = board_face.get_texture()
-
-
-# An occupied slot that isn't this player's own card and hasn't been
-# collected yet -- exactly what the "Card available" board badge means,
-# reusing profile_card_slots_view rather than a second query shape.
-func _has_uncollected_card() -> bool:
-	var rows: Array = await SupabaseClient.get_table(
-		"profile_card_slots_view",
-		"select=occupied,is_own_card,already_collected&landmark_id=eq.%s" % landmark_id
-	)
-	for row: Dictionary in rows:
-		var occupied: bool = row.get("occupied", false)
-		var is_own_card: bool = row.get("is_own_card", false)
-		var already_collected: bool = row.get("already_collected", false)
-		if occupied and not is_own_card and not already_collected:
-			return true
-	return false
 
 
 func set_in_range(value: bool) -> void:

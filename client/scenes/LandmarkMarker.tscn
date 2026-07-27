@@ -1,10 +1,9 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/landmark_marker.gd" id="1"]
 [ext_resource type="PackedScene" path="res://assets/models/landmark_sign.glb" id="2"]
 [ext_resource type="PackedScene" path="res://assets/models/profile_card_holder.glb" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/WindSwirl.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/LandmarkBoardFace.tscn" id="5"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1"]
 size = Vector3(0.4, 2.7, 2.4)
@@ -37,14 +36,6 @@ height = 0.04
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_Category"]
 albedo_color = Color(0.7, 0.7, 0.7, 1)
-
-[sub_resource type="QuadMesh" id="QuadMesh_BoardFace"]
-size = Vector2(1.8, 2.2)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_BoardFace"]
-albedo_color = Color(1, 1, 1, 1)
-shading_mode = 0
-cull_mode = 2
 
 [node name="LandmarkMarker" type="Area3D"]
 script = ExtResource("1")
@@ -87,24 +78,3 @@ text = "Landmark Name"
 
 [node name="WindSwirl" parent="." instance=ExtResource("4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
-
-[node name="LandmarkBoardFace" parent="." instance=ExtResource("5")]
-
-[node name="BoardFaceQuad" type="MeshInstance3D" parent="."]
-# Rotates the QuadMesh's default +Z-facing normal to +X -- the sign's
-# own board sits in the Y-Z plane (its collision box is thin in X:
-# CollisionShape3D above is 0.4 in X vs 2.7/2.4 in Y/Z), not the
-# XY-facing default a fresh QuadMesh assumes. A NEW separate quad
-# rather than texturing the sign model's own board surface directly:
-# that surface's imported UVs tile ~130x along one axis (checked
-# directly against the glTF's raw accessor data, not assumed) --
-# workable for a repeating wood-grain look, useless for projecting one
-# coherent custom layout. Position/size here are a best-effort estimate
-# from this file's own existing measured reference points (the
-# collision box's y-center, FIRST_SLOT_POSITION, STRUCTURE_TOP_HEIGHT)
-# -- check once visible in Godot and nudge if it doesn't sit flush on
-# the real board, same as FIRST_SLOT_POSITION/SLOT_SPACING already are.
-transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 1.4, 0.05)
-cast_shadow = 0
-mesh = SubResource("QuadMesh_BoardFace")
-surface_material_override/0 = SubResource("StandardMaterial3D_BoardFace")

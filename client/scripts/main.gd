@@ -45,6 +45,7 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var community_center_ui: CanvasLayer = $CommunityCenterUI
 @onready var stamp_desk_ui: CanvasLayer = $StampDeskUI
 @onready var nearby_ui: CanvasLayer = $NearbyUI
+@onready var landmark_board_overlay: CanvasLayer = $LandmarkBoardOverlay
 
 var markers_by_landmark_id: Dictionary = {}
 var focused_marker: LandmarkMarker = null
@@ -71,6 +72,7 @@ func _ready() -> void:
 	nearby_ui.setup(landmark_markers, community_center_markers, player_marker, PROXIMITY_RADIUS_METERS)
 	nearby_ui.landmark_tapped.connect(_on_landmark_marker_tapped)
 	nearby_ui.community_center_tapped.connect(_on_community_center_marker_tapped)
+	landmark_display.set_board_overlay(landmark_board_overlay)
 
 	if not SupabaseClient.is_ready:
 		await SupabaseClient.authenticated
@@ -179,12 +181,25 @@ func _handle_movement_input(delta: float) -> void:
 
 
 func _check_proximity() -> void:
+	var closest_in_range: LandmarkMarker = null
+	var closest_distance := INF
 	for marker: LandmarkMarker in landmark_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
+		if marker.in_range and player_distance < closest_distance:
+			closest_distance = player_distance
+			closest_in_range = marker
 	for marker: CommunityCenterMarker in community_center_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
+
+	# Hidden while a sign is focused -- the interactive popup already
+	# covers everything then, and both up at once would just be visual
+	# clutter competing for the same screen space.
+	if closest_in_range != null and focused_marker == null:
+		landmark_board_overlay.show_for(closest_in_range, camera)
+	else:
+		landmark_board_overlay.hide_overlay()
 
 
 func _load_landmarks() -> void:
@@ -219,11 +234,6 @@ func _load_landmarks() -> void:
 		marker.position = GeoProjection.to_local(lat, lng)
 		marker.tapped.connect(_on_landmark_marker_tapped)
 		markers_by_landmark_id[marker.landmark_id] = marker
-		# Not awaited -- the board face (name/photo/description baked
-		# onto the physical sign) is supplementary presentation, not
-		# something the rest of boot should wait on. Runs in the
-		# background per marker instead.
-		marker.load_board_face()
 
 
 func _load_existing_visits() -> void:
@@ -338,6 +348,6 @@ func _record_visit(marker: LandmarkMarker) -> void:
 			marker.set_visited(false)
 	elif is_first:
 		print("Visited %s for the first time!" % marker.landmark_name)
-		marker.load_board_face()  # refreshes the board's Visited badge
+		landmark_board_overlay.refresh_if_showing(marker)
 	else:
 		print("Visited %s again." % marker.landmark_name)

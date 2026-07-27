@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://scripts/community_center_ui.gd" id="16"]
 [ext_resource type="Script" path="res://scripts/nearby_ui.gd" id="17"]
 [ext_resource type="Script" path="res://scripts/stamp_desk_ui.gd" id="18"]
+[ext_resource type="Script" path="res://scripts/landmark_board_overlay.gd" id="19"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
@@ -132,6 +133,41 @@ text = ""
 
 [node name="CloseButton" type="Button" parent="LandmarkDisplay/Panel/VBoxContainer"]
 text = "Close"
+
+[node name="LandmarkBoardOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("19")
+
+[node name="Panel" type="PanelContainer" parent="LandmarkBoardOverlay"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 320.0
+offset_bottom = 420.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="LandmarkBoardOverlay/Panel"]
+
+[node name="TitleLabel" type="Label" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 24
+autowrap_mode = 3
+text = "Landmark Name"
+
+[node name="SubtitleLabel" type="Label" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 16
+text = "Category · Community"
+
+[node name="PhotoRect" type="TextureRect" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 180)
+expand_mode = 1
+stretch_mode = 6
+
+[node name="DescriptionLabel" type="Label" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
+autowrap_mode = 3
+text = ""
+
+[node name="TagRow" type="HBoxContainer" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
+theme_override_constants/separation = 8
+
+[node name="BadgeRow" type="HBoxContainer" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
+theme_override_constants/separation = 8
 
 [node name="AtlasButton" type="CanvasLayer" parent="."]
 

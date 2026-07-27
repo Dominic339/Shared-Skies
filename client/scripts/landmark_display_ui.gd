@@ -22,12 +22,20 @@ const SCREEN_MARGIN_ABOVE_SIGN := 40.0
 var _camera: Camera3D = null
 var _marker: LandmarkMarker = null
 var _has_recommended: bool = false
+var _board_overlay: CanvasLayer = null
 
 
 func _ready() -> void:
 	close_button.pressed.connect(_on_close_pressed)
 	recommend_button.pressed.connect(_on_recommend_pressed)
 	hide()
+
+
+# Wired once by main.gd -- lets actions taken here (recommend, leave/
+# collect a card) refresh the ambient board overlay's badges if it
+# happens to be showing this same Landmark right now.
+func set_board_overlay(board_overlay: CanvasLayer) -> void:
+	_board_overlay = board_overlay
 
 
 func show_landmark(marker: LandmarkMarker, camera: Camera3D) -> void:
@@ -203,7 +211,7 @@ func _on_recommend_pressed() -> void:
 		recommend_status_label.text = SupabaseClient.last_error_message
 	else:
 		await _load_recommendation_state()
-		_marker.load_board_face()  # refreshes the board's Recommended badge
+		_board_overlay.refresh_if_showing(_marker)
 
 
 func _on_leave_card_pressed(slot_id: String) -> void:
@@ -214,7 +222,7 @@ func _on_leave_card_pressed(slot_id: String) -> void:
 	if row.is_empty():
 		print("Failed to leave card in slot %s" % slot_id)
 	await _load_card_slots()
-	_marker.load_board_face()  # refreshes the board's "Card available" badge
+	_board_overlay.refresh_if_showing(_marker)
 
 
 func _on_collect_card_pressed(placement_id: String) -> void:
@@ -225,7 +233,7 @@ func _on_collect_card_pressed(placement_id: String) -> void:
 	if row.is_empty():
 		print("Failed to collect card for placement %s" % placement_id)
 	await _load_card_slots()
-	_marker.load_board_face()  # refreshes the board's "Card available" badge
+	_board_overlay.refresh_if_showing(_marker)
 
 
 func _on_close_pressed() -> void:
