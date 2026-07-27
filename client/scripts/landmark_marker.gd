@@ -408,7 +408,7 @@ const FRONT_AXIS_CORRECTION_DEGREES := -90.0
 func _on_input_event(
 	_camera: Node, event: InputEvent, click_position: Vector3, _normal: Vector3, _shape_idx: int
 ) -> void:
-	var pressed := (
+	var pressed: bool = (
 		(event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
 		or (event is InputEventScreenTouch and event.pressed)
 	)
