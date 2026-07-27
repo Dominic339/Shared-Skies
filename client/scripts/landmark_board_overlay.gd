@@ -1,10 +1,12 @@
 extends CanvasLayer
 
-# Ambient "you're near this Landmark" info panel -- shows automatically
-# for whichever Landmark marker is currently closest and in range, not
-# on tap (tapping still opens landmark_display_ui.gd for the long
-# description/card slots/Recommend). A single 2D screen-space overlay
-# tracking whatever marker is currently relevant, not a 3D texture
+# The kiosk board's presentation content (name/photo/description/tags/
+# badges) -- shown alongside landmark_display_ui.gd's interactive popup
+# once a Landmark is focused (tapped), not while just walking past it
+# in range; an earlier version showed on proximity instead, but that
+# made it pop up during ordinary exploration rather than only when you
+# actually stop to look at a sign. A single 2D screen-space overlay
+# reused for whatever marker is currently focused, not a 3D texture
 # baked per-marker -- this sidesteps two problems a first attempt at a
 # 3D-projected board hit: no blind 3D-mesh-alignment guesswork (this
 # reuses the exact same camera.unproject_position() screen-anchoring
@@ -22,8 +24,6 @@ const TAG_LABELS := {
 	"pet_friendly": "Pet Friendly",
 }
 
-const SCREEN_MARGIN_ABOVE_SIGN := 20.0
-
 @onready var panel: PanelContainer = $Panel
 @onready var title_label: Label = $Panel/VBoxContainer/TitleLabel
 @onready var subtitle_label: Label = $Panel/VBoxContainer/SubtitleLabel
@@ -40,8 +40,7 @@ func _ready() -> void:
 	hide()
 
 
-# No-op if already showing this same marker -- called every frame from
-# main.gd's proximity check, so this must be cheap when nothing changed.
+# Called from main.gd's tap handler, alongside landmark_display.show_landmark().
 func show_for(marker: LandmarkMarker, camera: Camera3D) -> void:
 	_camera = camera
 	if _marker == marker:
@@ -70,11 +69,21 @@ func _process(_delta: float) -> void:
 		_update_position()
 
 
+const SIDE_GAP_FROM_SIGN := 40.0
+
+
 func _update_position() -> void:
 	var anchor := _marker.global_position + Vector3(0, LandmarkMarker.STRUCTURE_TOP_HEIGHT_METERS, 0)
 	var screen_point := _camera.unproject_position(anchor)
+	# To the LEFT of the sign's anchor point, not stacked above it --
+	# landmark_display_ui.gd's popup is centered on this exact same
+	# anchor while focused (both panels are only ever visible together
+	# now that this overlay shows on focus instead of on proximity), so
+	# stacking vertically would overlap it regardless of either panel's
+	# actual height. Check once both are visible together and adjust
+	# the gap/side if it still crowds the popup.
 	panel.position = Vector2(
-		screen_point.x - panel.size.x / 2.0, screen_point.y - SCREEN_MARGIN_ABOVE_SIGN - panel.size.y
+		screen_point.x - panel.size.x - SIDE_GAP_FROM_SIGN, screen_point.y - panel.size.y / 2.0
 	)
 
 

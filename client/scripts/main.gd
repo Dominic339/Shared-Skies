@@ -181,25 +181,12 @@ func _handle_movement_input(delta: float) -> void:
 
 
 func _check_proximity() -> void:
-	var closest_in_range: LandmarkMarker = null
-	var closest_distance := INF
 	for marker: LandmarkMarker in landmark_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
-		if marker.in_range and player_distance < closest_distance:
-			closest_distance = player_distance
-			closest_in_range = marker
 	for marker: CommunityCenterMarker in community_center_markers.get_children():
 		var player_distance := player_marker.global_position.distance_to(marker.global_position)
 		marker.set_in_range(player_distance <= PROXIMITY_RADIUS_METERS)
-
-	# Hidden while a sign is focused -- the interactive popup already
-	# covers everything then, and both up at once would just be visual
-	# clutter competing for the same screen space.
-	if closest_in_range != null and focused_marker == null:
-		landmark_board_overlay.show_for(closest_in_range, camera)
-	else:
-		landmark_board_overlay.hide_overlay()
 
 
 func _load_landmarks() -> void:
@@ -282,6 +269,7 @@ func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 	camera.animate_pitch_to(FOCUS_PITCH_DEGREES)
 
 	landmark_display.show_landmark(marker, camera)
+	landmark_board_overlay.show_for(marker, camera)
 	if marker.in_range:
 		await _record_visit(marker)
 
@@ -290,6 +278,7 @@ func _on_landmark_display_closed() -> void:
 	if focused_marker:
 		focused_marker.set_selected(false)
 	focused_marker = null
+	landmark_board_overlay.hide_overlay()
 	camera.locked = false
 	camera.yaw_degrees = _yaw_before_focus
 	camera.animate_zoom_to(_zoom_before_focus)
