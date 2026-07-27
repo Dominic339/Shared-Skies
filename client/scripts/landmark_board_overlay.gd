@@ -70,13 +70,21 @@ func _process(_delta: float) -> void:
 		_update_position()
 
 
-const SIDE_GAP_FROM_SIGN := 40.0
+# Only a fraction of the panel's width sits to the left of the anchor
+# (not the full width) -- keeps it mostly beside the sign rather than
+# pushed entirely off to the left of it.
+const LEFT_OVERLAP_FRACTION := 0.55
+const SIDE_GAP_FROM_SIGN := 10.0
+# Extra drop below the sign's structure-top anchor, on top of the
+# top-anchoring below -- pushes the whole panel further down the screen,
+# away from the corner UI/popup crowding near the anchor height itself.
+const VERTICAL_DROP := 70.0
 
 
 func _update_position() -> void:
 	var anchor := _marker.global_position + Vector3(0, LandmarkMarker.STRUCTURE_TOP_HEIGHT_METERS, 0)
 	var screen_point := _camera.unproject_position(anchor)
-	# To the LEFT of the sign's anchor point, not stacked above it --
+	# Mostly to the LEFT of the sign's anchor point, not stacked above it --
 	# landmark_display_ui.gd's popup is centered on this exact same
 	# anchor while focused (both panels are only ever visible together
 	# now that this overlay shows on focus instead of on proximity), so
@@ -84,12 +92,15 @@ func _update_position() -> void:
 	# actual height. Check once both are visible together and adjust
 	# the gap/side if it still crowds the popup.
 	#
-	# Top-anchored at the sign's structure height, extending DOWNWARD
-	# from there -- vertically centering on an anchor that's already
-	# near the top of the sign pushed half the panel even higher,
-	# overlapping the corner UI. Anchoring the top edge here instead
-	# keeps it lower on screen regardless of the panel's own height.
-	panel.position = Vector2(screen_point.x - panel.size.x - SIDE_GAP_FROM_SIGN, screen_point.y)
+	# Top-anchored at the sign's structure height (plus VERTICAL_DROP),
+	# extending DOWNWARD from there -- vertically centering on an anchor
+	# that's already near the top of the sign pushed half the panel even
+	# higher, overlapping the corner UI. Anchoring the top edge here
+	# instead keeps it lower on screen regardless of the panel's own height.
+	panel.position = Vector2(
+		screen_point.x - panel.size.x * LEFT_OVERLAP_FRACTION - SIDE_GAP_FROM_SIGN,
+		screen_point.y + VERTICAL_DROP
+	)
 
 
 func _load_data() -> void:
