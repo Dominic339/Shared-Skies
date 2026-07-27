@@ -149,8 +149,8 @@ script = ExtResource("19")
 [node name="Panel" type="PanelContainer" parent="LandmarkBoardOverlay"]
 offset_left = 0.0
 offset_top = 0.0
-offset_right = 600.0
-offset_bottom = 160.0
+offset_right = 620.0
+offset_bottom = 180.0
 
 [node name="MainVBox" type="VBoxContainer" parent="LandmarkBoardOverlay/Panel"]
 theme_override_constants/separation = 0
@@ -178,15 +178,20 @@ theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 6
 
-[node name="ContentHBox" type="HBoxContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin"]
-theme_override_constants/separation = 16
+[node name="ContentVBox" type="VBoxContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin"]
+theme_override_constants/separation = 8
 
-[node name="LeftColumn" type="VBoxContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox"]
+[node name="ImageDescRow" type="HBoxContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentVBox"]
+theme_override_constants/separation = 14
+
+[node name="PhotoRect" type="TextureRect" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentVBox/ImageDescRow"]
+custom_minimum_size = Vector2(200, 100)
+size_flags_horizontal = 0
+expand_mode = 1
+stretch_mode = 6
+
+[node name="DescriptionLabel" type="Label" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentVBox/ImageDescRow"]
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.3
-theme_override_constants/separation = 6
-
-[node name="DescriptionLabel" type="Label" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn"]
 theme_override_colors/font_color = Color(0.95, 0.94, 0.9, 1)
 theme_override_colors/font_outline_color = Color(0.08, 0.06, 0.04, 1)
 theme_override_constants/outline_size = 5
@@ -194,16 +199,17 @@ theme_override_font_sizes/font_size = 14
 autowrap_mode = 3
 text = "Short description goes here."
 
-[node name="ChipRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn"]
+[node name="BottomRow" type="HBoxContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentVBox"]
+theme_override_constants/separation = 10
+
+[node name="TagRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentVBox/BottomRow"]
+size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 
-[node name="PhotoRect" type="TextureRect" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox"]
-custom_minimum_size = Vector2(230, 100)
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
-expand_mode = 1
-stretch_mode = 6
+[node name="BadgeRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentVBox/BottomRow"]
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
 
 [node name="AtlasButton" type="CanvasLayer" parent="."]
 

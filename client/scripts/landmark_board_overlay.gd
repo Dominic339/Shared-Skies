@@ -27,11 +27,17 @@ const TAG_LABELS := {
 @onready var panel: PanelContainer = $Panel
 @onready var title_label: Label = $Panel/MainVBox/HeaderPanel/HeaderVBox/TitleLabel
 @onready var subtitle_label: Label = $Panel/MainVBox/HeaderPanel/HeaderVBox/SubtitleLabel
-@onready var photo_rect: TextureRect = $Panel/MainVBox/ContentMargin/ContentHBox/PhotoRect
+@onready var photo_rect: TextureRect = $Panel/MainVBox/ContentMargin/ContentVBox/ImageDescRow/PhotoRect
 @onready var description_label: Label = (
-	$Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/DescriptionLabel
+	$Panel/MainVBox/ContentMargin/ContentVBox/ImageDescRow/DescriptionLabel
 )
-@onready var chip_row: HFlowContainer = $Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/ChipRow
+# Tags (wheelchair accessible, historic, etc.) sit bottom-left; status
+# badges (Visited, Recommended, Card available) sit bottom-right -- two
+# separate rows in the same BottomRow HBoxContainer rather than one
+# shared row, since a single mixed row read as one big pile with no
+# clear grouping.
+@onready var tag_row: HFlowContainer = $Panel/MainVBox/ContentMargin/ContentVBox/BottomRow/TagRow
+@onready var badge_row: HFlowContainer = $Panel/MainVBox/ContentMargin/ContentVBox/BottomRow/BadgeRow
 
 var _marker: LandmarkMarker = null
 var _camera: Camera3D = null
@@ -131,7 +137,9 @@ func _load_data() -> void:
 
 	_load_photo(data.get("cover_image_url"))
 
-	for child in chip_row.get_children():
+	for child in tag_row.get_children():
+		child.queue_free()
+	for child in badge_row.get_children():
 		child.queue_free()
 	_populate_tags(data.get("tags", []))
 
@@ -198,18 +206,18 @@ func _make_chip(text: String, bg_color: Color, text_color: Color) -> PanelContai
 
 func _populate_tags(tags: Array) -> void:
 	for tag: String in tags:
-		chip_row.add_child(_make_chip(TAG_LABELS.get(tag, tag), TAG_CHIP_COLOR, TAG_CHIP_TEXT_COLOR))
+		tag_row.add_child(_make_chip(TAG_LABELS.get(tag, tag), TAG_CHIP_COLOR, TAG_CHIP_TEXT_COLOR))
 
 
 func _populate_badges(visited: bool, recommendation_count: int, has_uncollected_card: bool) -> void:
 	if visited:
-		chip_row.add_child(_make_chip("Visited", VISITED_CHIP_COLOR, VISITED_CHIP_TEXT_COLOR))
+		badge_row.add_child(_make_chip("Visited", VISITED_CHIP_COLOR, VISITED_CHIP_TEXT_COLOR))
 	if recommendation_count > 0:
-		chip_row.add_child(_make_chip(
+		badge_row.add_child(_make_chip(
 			"Recommended (%d)" % recommendation_count, RECOMMENDED_CHIP_COLOR, RECOMMENDED_CHIP_TEXT_COLOR
 		))
 	if has_uncollected_card:
-		chip_row.add_child(_make_chip("Card available", CARD_CHIP_COLOR, CARD_CHIP_TEXT_COLOR))
+		badge_row.add_child(_make_chip("Card available", CARD_CHIP_COLOR, CARD_CHIP_TEXT_COLOR))
 
 
 # Reuses profile_card_slots_view rather than a second query shape --
