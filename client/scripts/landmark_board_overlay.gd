@@ -31,10 +31,7 @@ const TAG_LABELS := {
 @onready var description_label: Label = (
 	$Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/DescriptionLabel
 )
-@onready var tag_row: HFlowContainer = $Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/TagRow
-@onready var badge_row: HFlowContainer = (
-	$Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/BadgeRow
-)
+@onready var chip_row: HFlowContainer = $Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/ChipRow
 
 var _marker: LandmarkMarker = null
 var _camera: Camera3D = null
@@ -86,9 +83,13 @@ func _update_position() -> void:
 	# stacking vertically would overlap it regardless of either panel's
 	# actual height. Check once both are visible together and adjust
 	# the gap/side if it still crowds the popup.
-	panel.position = Vector2(
-		screen_point.x - panel.size.x - SIDE_GAP_FROM_SIGN, screen_point.y - panel.size.y / 2.0
-	)
+	#
+	# Top-anchored at the sign's structure height, extending DOWNWARD
+	# from there -- vertically centering on an anchor that's already
+	# near the top of the sign pushed half the panel even higher,
+	# overlapping the corner UI. Anchoring the top edge here instead
+	# keeps it lower on screen regardless of the panel's own height.
+	panel.position = Vector2(screen_point.x - panel.size.x - SIDE_GAP_FROM_SIGN, screen_point.y)
 
 
 func _load_data() -> void:
@@ -118,6 +119,9 @@ func _load_data() -> void:
 	description_label.text = short_description if short_description != null else ""
 
 	_load_photo(data.get("cover_image_url"))
+
+	for child in chip_row.get_children():
+		child.queue_free()
 	_populate_tags(data.get("tags", []))
 
 	var has_uncollected_card := await _has_uncollected_card(landmark_id)
@@ -182,23 +186,19 @@ func _make_chip(text: String, bg_color: Color, text_color: Color) -> PanelContai
 
 
 func _populate_tags(tags: Array) -> void:
-	for child in tag_row.get_children():
-		child.queue_free()
 	for tag: String in tags:
-		tag_row.add_child(_make_chip(TAG_LABELS.get(tag, tag), TAG_CHIP_COLOR, TAG_CHIP_TEXT_COLOR))
+		chip_row.add_child(_make_chip(TAG_LABELS.get(tag, tag), TAG_CHIP_COLOR, TAG_CHIP_TEXT_COLOR))
 
 
 func _populate_badges(visited: bool, recommendation_count: int, has_uncollected_card: bool) -> void:
-	for child in badge_row.get_children():
-		child.queue_free()
 	if visited:
-		badge_row.add_child(_make_chip("Visited", VISITED_CHIP_COLOR, VISITED_CHIP_TEXT_COLOR))
+		chip_row.add_child(_make_chip("Visited", VISITED_CHIP_COLOR, VISITED_CHIP_TEXT_COLOR))
 	if recommendation_count > 0:
-		badge_row.add_child(_make_chip(
+		chip_row.add_child(_make_chip(
 			"Recommended (%d)" % recommendation_count, RECOMMENDED_CHIP_COLOR, RECOMMENDED_CHIP_TEXT_COLOR
 		))
 	if has_uncollected_card:
-		badge_row.add_child(_make_chip("Card available", CARD_CHIP_COLOR, CARD_CHIP_TEXT_COLOR))
+		chip_row.add_child(_make_chip("Card available", CARD_CHIP_COLOR, CARD_CHIP_TEXT_COLOR))
 
 
 # Reuses profile_card_slots_view rather than a second query shape --
