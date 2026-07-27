@@ -166,9 +166,14 @@ func _load_rumor_quests() -> void:
 		var landmark_id: String = row.get("id", "")
 		var is_own: bool = row.get("is_own_submission", false)
 		var already_confirmed: bool = row.get("already_confirmed", false)
-		var photo_ref: String = row.get("photo_ref", "")
+		# Untyped Variant first, not a hard `: String` -- photo_ref is a
+		# nullable column, and PostgREST always includes it as a present
+		# key with JSON null (not an absent key), so Dictionary.get()'s
+		# default never actually applies here -- assigning that null
+		# straight into a typed String var is what crashed at runtime.
+		var photo_ref: Variant = row.get("photo_ref")
 
-		if photo_ref != "" and photo_ref != null:
+		if photo_ref != null and photo_ref != "":
 			var photo_button := Button.new()
 			photo_button.text = "View Photo"
 			photo_button.pressed.connect(_on_view_photo_pressed.bind(photo_ref))
@@ -227,7 +232,11 @@ func _on_rumor_submit_pressed() -> void:
 	if rumor_name_edit.text.strip_edges().is_empty():
 		return
 
-	var offset := GeoProjection.local_delta_to_lat_lng(
+	# Named nudge_offset, not offset -- CanvasLayer (this script's base
+	# class) already declares its own `offset` property, and a local var
+	# of the same name silently shadows it instead of erroring, which
+	# GDScript's reload step flags directly.
+	var nudge_offset := GeoProjection.local_delta_to_lat_lng(
 		rumor_nudge_east_slider.value, rumor_nudge_north_slider.value
 	)
 	var photo_ref: Variant = await _upload_chosen_photo()
@@ -238,8 +247,8 @@ func _on_rumor_submit_pressed() -> void:
 		"p_category": LANDMARK_CATEGORIES[rumor_category_option.selected],
 		"p_player_lat": DevLocation.current_lat,
 		"p_player_lng": DevLocation.current_lng,
-		"p_lat": DevLocation.current_lat + offset.x,
-		"p_lng": DevLocation.current_lng + offset.y,
+		"p_lat": DevLocation.current_lat + nudge_offset.x,
+		"p_lng": DevLocation.current_lng + nudge_offset.y,
 		"p_photo_ref": photo_ref,
 	})
 	if result is Dictionary and result.is_empty():
@@ -271,7 +280,12 @@ func _upload_chosen_photo() -> Variant:
 
 	var object_path := "%s/%s_%d.png" % [SupabaseClient.user_id, chosen, Time.get_ticks_msec()]
 	var uploaded_path := await SupabaseClient.upload_file("rumor-photos", object_path, bytes, "image/png")
-	return uploaded_path if uploaded_path != "" else null
+	# Not a ternary -- String vs. null aren't a "mutually compatible"
+	# pair for GDScript's static type inference on a conditional
+	# expression, which is exactly what reload flagged here.
+	if uploaded_path == "":
+		return null
+	return uploaded_path
 
 
 func _on_rumor_confirm_pressed(landmark_id: String) -> void:
