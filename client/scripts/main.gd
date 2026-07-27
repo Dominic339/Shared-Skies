@@ -221,7 +221,6 @@ func _load_landmarks() -> void:
 		marker.position = GeoProjection.to_local(lat, lng)
 		marker.tapped.connect(_on_landmark_marker_tapped)
 		marker.card_state_changed.connect(_on_marker_card_state_changed)
-		marker.description_area_clicked.connect(_on_marker_description_area_clicked)
 		markers_by_landmark_id[marker.landmark_id] = marker
 
 
@@ -327,10 +326,6 @@ func _on_community_recommendations_button_pressed() -> void:
 func _on_marker_card_state_changed(marker: LandmarkMarker) -> void:
 	landmark_board_overlay.refresh_if_showing(marker)
 	landmark_display.refresh_card_slots_if_showing(marker)
-
-
-func _on_marker_description_area_clicked(marker: LandmarkMarker) -> void:
-	landmark_board_overlay.toggle_description_if_showing(marker)
 
 
 func _on_community_center_marker_tapped(marker: CommunityCenterMarker) -> void:

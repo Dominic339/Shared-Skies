@@ -64,6 +64,15 @@ uniform vec2 normal_uv_scale = vec2(1.0);
 // one, which would make curved geometry look faceted/low-poly.
 uniform bool use_flat_face_normal = false;
 
+// A single directional light can only ever fully favor one side of an
+// object -- with signs facing every which way around the map, whichever
+// side happens to face away from the light would otherwise go fully dark,
+// which is exactly backwards for something meant to be read. This is a
+// flat floor under the banding, not a real fill light aimed at the camera
+// (this shader has no notion of which side is "the front" a player is
+// looking at), but it guarantees no face ever goes unreadably dark.
+uniform float min_shade : hint_range(0.0, 1.0) = 0.35;
+
 void fragment() {
 	vec4 base_color = albedo_tint;
 	if (use_vertex_color) {
@@ -91,6 +100,6 @@ void light() {
 	float banded = floor(ndotl * bands) / bands;
 	float next_band = banded + 1.0 / bands;
 	float t = smoothstep(banded, banded + band_softness, ndotl);
-	float shade = clamp(mix(banded, next_band, t), 0.0, 1.0);
+	float shade = clamp(mix(banded, next_band, t), min_shade, 1.0);
 	DIFFUSE_LIGHT += shade * ALBEDO * LIGHT_COLOR * ATTENUATION;
 }

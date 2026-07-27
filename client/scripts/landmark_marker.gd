@@ -8,10 +8,6 @@ signal tapped(marker: LandmarkMarker)
 # refresh their own badges/slot lists too, since those aren't reloaded
 # automatically just because the physical card object changed.
 signal card_state_changed(marker: LandmarkMarker)
-# Fired when the physical sign's description hotspot is tapped -- lets
-# main.gd tell the ambient board overlay to toggle between its short and
-# long description text.
-signal description_area_clicked(marker: LandmarkMarker)
 
 # Color-coded tag, not unique per-category art -- deliberately simple
 # until there's a reason to invest in real category iconography.
@@ -71,24 +67,22 @@ const OWN_CARD_TINT := Color(1, 0.85, 0.3)
 const COLLECTED_CARD_TINT := Color(0.45, 0.45, 0.45)
 
 # How close (in the marker's own local, unscaled space) a click's world hit
-# point has to land to a hotspot's authored position to count as hitting it.
-# These hotspots are read straight off the world-space point Godot's physics
-# picking already hands _on_input_event -- not separate overlapping Area3D
-# colliders, since multiple overlapping pickable colliders at effectively the
-# same depth (a card holder sitting right on the board's own front face) is
-# exactly the kind of thing Godot's closest-hit object picking can get
-# ambiguous about. One collision shape (the existing sign body), one
-# input_event, geometry-based dispatch.
+# point has to land to a card holder's position to count as hitting it. Read
+# straight off the world-space point Godot's physics picking already hands
+# _on_input_event -- not a separate Area3D per holder, since multiple
+# overlapping pickable colliders at effectively the same depth (a card
+# holder sitting right on the board's own front face) is exactly the kind of
+# thing Godot's closest-hit object picking can get ambiguous about. One
+# collision shape (the existing sign body), one input_event, geometry-based
+# dispatch.
+#
+# The quick-collect button and the description "read more" both used to be
+# hotspots here too, but moved to the 2D board overlay UI instead (see
+# landmark_board_overlay.gd) -- a hotspot on the physical sign that isn't
+# reliably discoverable/clickable (this sign's flat wood board has no
+# printed text or button art at all yet) isn't actually more "in-world" than
+# a UI button, it's just a UI button you can't see.
 const CARD_HOTSPOT_RADIUS := 0.15
-
-# First-guess placement, same as every other "can't verify 3D placement
-# without seeing it rendered" problem this sign has hit -- expect to adjust
-# both of these from real in-game feedback once Dominic can actually tap
-# the sign and see where the hit lands relative to the button/board art.
-const QUICK_COLLECT_LOCAL_POSITION := Vector3(0.04, 1.55, -1.09)
-const QUICK_COLLECT_HOTSPOT_RADIUS := 0.18
-const DESCRIPTION_HOTSPOT_CENTER := Vector3(0.04, 1.0, -1.1)
-const DESCRIPTION_HOTSPOT_HALF_EXTENTS := Vector3(0.95, 0.5, 0.3)
 
 # One row (from profile_card_slots_view) per card slot, refreshed whenever
 # this Landmark's own cards might have changed -- lets the physical holders
@@ -300,19 +294,6 @@ func _hotspot_slot_index(local_point: Vector3) -> int:
 	return -1
 
 
-func _is_within_quick_collect_hotspot(local_point: Vector3) -> bool:
-	return local_point.distance_to(QUICK_COLLECT_LOCAL_POSITION) <= QUICK_COLLECT_HOTSPOT_RADIUS
-
-
-func _is_within_description_hotspot(local_point: Vector3) -> bool:
-	var offset := (local_point - DESCRIPTION_HOTSPOT_CENTER).abs()
-	return (
-		offset.x <= DESCRIPTION_HOTSPOT_HALF_EXTENTS.x
-		and offset.y <= DESCRIPTION_HOTSPOT_HALF_EXTENTS.y
-		and offset.z <= DESCRIPTION_HOTSPOT_HALF_EXTENTS.z
-	)
-
-
 # Tapping directly on an occupied, not-yet-collected, not-your-own card is
 # the direct-interaction equivalent of the popup's "Collect" button. Empty
 # slots and your own card don't do anything on a direct tap yet -- leaving
@@ -328,7 +309,10 @@ func _on_slot_hotspot_clicked(slot_index: int) -> void:
 		_collect_card(row.get("placement_id", ""), slot_index)
 
 
-func _quick_collect() -> void:
+# Called from the board overlay's "Collect" button (see
+# landmark_board_overlay.gd) -- collects the first available card without
+# the player needing to find/tap the exact right holder themselves.
+func quick_collect() -> void:
 	if not in_range:
 		return
 	for row: Dictionary in _slot_rows:
@@ -338,6 +322,15 @@ func _quick_collect() -> void:
 	# Nothing collectible right now -- silently a no-op. The ambient board
 	# overlay's "Card available" badge is the real indicator of whether this
 	# button will actually do anything.
+
+
+# Whether quick_collect() would actually do anything right now -- lets the
+# board overlay disable its "Collect" button instead of it silently no-oping.
+func has_collectible_card() -> bool:
+	for row: Dictionary in _slot_rows:
+		if row.get("occupied", false) and not row.get("is_own_card", false) and not row.get("already_collected", false):
+			return true
+	return false
 
 
 func _collect_card(placement_id: String, slot_index: int) -> void:
@@ -396,6 +389,16 @@ func set_selected(value: bool) -> void:
 	# redundant and what was actually overflowing the screen on focus.
 	name_label.visible = not value
 	name_label.modulate = NAME_COLOR_SELECTED if value else NAME_COLOR
+	# While focused, every interaction (collect, recommend, read more) now
+	# lives on the 2D popup/board overlay instead -- leaving this sign's own
+	# 3D collider pickable at the same time let clicks meant for those UI
+	# buttons land on the sign underneath instead (or in addition), since
+	# the focused camera view sits the sign directly behind that UI.
+	# Disabling it here, and re-enabling on unfocus, means direct-on-sign
+	# interaction (tapping a card to collect it) only has to work in the
+	# one state -- not focused -- where nothing else is competing for the
+	# same clicks.
+	input_ray_pickable = not value
 
 
 # Degrees added on top of facing_degrees to correct for the sign model's
@@ -417,20 +420,15 @@ func _on_input_event(
 
 	# click_position is the world-space point Godot's physics picking hit on
 	# this sign's own collision shape -- converting to local space and
-	# checking it against the hotspots above lets one collider serve several
-	# different physical interactions instead of needing a separate Area3D
-	# (and its overlapping-collider ambiguity) per hotspot.
+	# checking it against the card holders' positions lets this one collider
+	# serve both "tap a card to collect it" and "tap the sign to focus it"
+	# without a separate Area3D (and its overlapping-collider ambiguity) per
+	# holder.
 	var local_point := to_local(click_position)
 
 	var slot_index := _hotspot_slot_index(local_point)
 	if slot_index != -1:
 		_on_slot_hotspot_clicked(slot_index)
-		return
-	if _is_within_quick_collect_hotspot(local_point):
-		_quick_collect()
-		return
-	if _is_within_description_hotspot(local_point):
-		description_area_clicked.emit(self)
 		return
 
 	tapped.emit(self)

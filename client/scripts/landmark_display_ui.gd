@@ -223,6 +223,11 @@ func _on_leave_card_pressed(slot_id: String) -> void:
 		print("Failed to leave card in slot %s" % slot_id)
 	await _load_card_slots()
 	_board_overlay.refresh_if_showing(_marker)
+	# The marker's own physical card objects are a separate fetch from this
+	# popup's slot list -- without this, a card left/collected here would
+	# leave the 3D holder showing stale (or no) card until something else
+	# happened to refresh it.
+	await _marker.refresh_card_slots()
 
 
 func _on_collect_card_pressed(placement_id: String) -> void:
@@ -234,6 +239,7 @@ func _on_collect_card_pressed(placement_id: String) -> void:
 		print("Failed to collect card for placement %s" % placement_id)
 	await _load_card_slots()
 	_board_overlay.refresh_if_showing(_marker)
+	await _marker.refresh_card_slots()
 
 
 # Called by main.gd when a direct in-world action (a tap on the physical

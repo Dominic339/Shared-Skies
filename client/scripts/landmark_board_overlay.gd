@@ -37,8 +37,11 @@ const TAG_LABELS := {
 @onready var panel: Panel = $Panel
 @onready var title_label: Label = $Panel/HeaderPanel/TitleLabel
 @onready var subtitle_label: Label = $Panel/HeaderPanel/SubtitleLabel
+@onready var collect_button: Button = $Panel/HeaderPanel/CollectButton
 @onready var photo_rect: TextureRect = $Panel/PhotoRect
-@onready var description_label: Label = $Panel/DescriptionLabel
+@onready var description_label: RichTextLabel = $Panel/DescriptionLabel
+@onready var recommend_button: Button = $Panel/RecommendButton
+@onready var recommend_status_label: Label = $Panel/RecommendStatusLabel
 # Tags (wheelchair accessible, historic, etc.) sit bottom-left; status
 # badges (Visited, Recommended, Card available) sit bottom-right -- two
 # separate fixed-rect boxes rather than one shared row, since a single
@@ -48,15 +51,19 @@ const TAG_LABELS := {
 
 var _marker: LandmarkMarker = null
 var _camera: Camera3D = null
-# Both fetched together in _load_data() -- toggle_description_if_showing()
-# just swaps which one is on screen, no extra round-trip needed.
+# Both fetched together in _load_data() -- _set_description_display() just
+# swaps which one is on screen, no extra round-trip needed.
 var _short_description: String = ""
 var _long_description: String = ""
 var _showing_long_description: bool = false
+var _has_recommended: bool = false
 
 
 func _ready() -> void:
 	hide()
+	collect_button.pressed.connect(_on_collect_pressed)
+	recommend_button.pressed.connect(_on_recommend_pressed)
+	description_label.meta_clicked.connect(_on_description_meta_clicked)
 
 
 # Called from main.gd's tap handler, alongside landmark_display.show_landmark().
@@ -149,7 +156,7 @@ func _load_data() -> void:
 	_short_description = short_description if short_description != null else ""
 	_long_description = long_description if long_description != null else _short_description
 	_showing_long_description = false
-	description_label.text = _short_description
+	_set_description_display()
 
 	_load_photo(data.get("cover_image_url"))
 
@@ -163,18 +170,86 @@ func _load_data() -> void:
 	if _marker == null or _marker.landmark_id != landmark_id:
 		return
 	_populate_badges(data.get("visited", false), data.get("recommendation_count", 0), has_uncollected_card)
+	collect_button.disabled = not has_uncollected_card
+
+	await _load_recommendation_state()
+	if _marker == null or _marker.landmark_id != landmark_id:
+		return
 
 	_update_position()
 
 
-# Called by main.gd when the sign's physical description hotspot is
-# tapped -- both descriptions are already loaded (see _load_data()), so
-# this is a plain in-place swap, not a new fetch.
-func toggle_description_if_showing(marker: LandmarkMarker) -> void:
-	if _marker != marker:
+const READ_MORE_LINK_COLOR := Color(0.68, 0.82, 1.0)
+
+
+# Appends a clickable "Read more..."/"Show less" link right after the
+# description text itself (BBCode [url], via meta_clicked below) -- this
+# used to be a hotspot on the physical 3D sign, but the sign's flat board
+# has no printed text or button art on it at all, so a 3D hotspot there
+# wasn't actually discoverable as an interaction; a link at the end of the
+# text it belongs to is.
+func _set_description_display() -> void:
+	var body := _long_description if _showing_long_description else _short_description
+	var escaped := body.replace("[", "[lb]").replace("]", "[rb]")
+	var has_more := _long_description != _short_description and _long_description != ""
+	if not has_more:
+		description_label.text = escaped
 		return
+	var link_text := "Show less" if _showing_long_description else "Read more..."
+	description_label.text = "%s  [url=toggle][color=#%s]%s[/color][/url]" % [
+		escaped, READ_MORE_LINK_COLOR.to_html(false), link_text
+	]
+
+
+func _on_description_meta_clicked(_meta: Variant) -> void:
 	_showing_long_description = not _showing_long_description
-	description_label.text = _long_description if _showing_long_description else _short_description
+	_set_description_display()
+
+
+func _on_collect_pressed() -> void:
+	if _marker:
+		_marker.quick_collect()
+
+
+# "Recommend This Place" -- moved here from the popup so everything the
+# player needs while looking at this Landmark lives in one UI instead of
+# needing the separate dev-style popup open too. Requires having actually
+# visited it first (checked server-side too, see recommend_landmark()/
+# unrecommend_landmark()).
+func _load_recommendation_state() -> void:
+	recommend_status_label.text = ""
+	if _marker == null:
+		return
+
+	recommend_button.disabled = not _marker.visited
+	if not _marker.visited:
+		recommend_status_label.text = "Visit this Landmark before recommending it."
+
+	var rows: Array = await SupabaseClient.get_table(
+		"community_recommendations_view",
+		(
+			"select=id&landmark_id=eq.%s&author_wayfinder_id=eq.%s&status=eq.published"
+			% [_marker.landmark_id, SupabaseClient.user_id]
+		)
+	)
+	_has_recommended = not rows.is_empty()
+	recommend_button.text = "Remove Recommendation" if _has_recommended else "Recommend This Place"
+
+
+func _on_recommend_pressed() -> void:
+	if _marker == null:
+		return
+
+	var result: Variant
+	if _has_recommended:
+		result = await SupabaseClient.call_rpc("unrecommend_landmark", {"p_landmark_id": _marker.landmark_id})
+	else:
+		result = await SupabaseClient.call_rpc("recommend_landmark", {"p_landmark_id": _marker.landmark_id})
+
+	if result is Dictionary and result.is_empty():
+		recommend_status_label.text = SupabaseClient.last_error_message
+	else:
+		await _load_data()
 
 
 func _load_photo(url: Variant) -> void:

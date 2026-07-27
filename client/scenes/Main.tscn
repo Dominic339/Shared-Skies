@@ -181,6 +181,13 @@ theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.78, 0.85, 0.75, 1)
 text = "Category · Community"
 
+[node name="CollectButton" type="Button" parent="LandmarkBoardOverlay/Panel/HeaderPanel"]
+offset_left = 701.0
+offset_top = 10.0
+offset_right = 801.0
+offset_bottom = 46.0
+text = "Collect"
+
 [node name="PhotoRect" type="TextureRect" parent="LandmarkBoardOverlay/Panel"]
 offset_left = 16.0
 offset_top = 68.0
@@ -189,18 +196,34 @@ offset_bottom = 444.0
 expand_mode = 1
 stretch_mode = 6
 
-[node name="DescriptionLabel" type="Label" parent="LandmarkBoardOverlay/Panel"]
+[node name="DescriptionLabel" type="RichTextLabel" parent="LandmarkBoardOverlay/Panel"]
 offset_left = 332.0
 offset_top = 68.0
 offset_right = 814.0
 offset_bottom = 218.0
-theme_override_colors/font_color = Color(0.95, 0.94, 0.9, 1)
+theme_override_colors/default_color = Color(0.95, 0.94, 0.9, 1)
 theme_override_colors/font_outline_color = Color(0.08, 0.06, 0.04, 1)
 theme_override_constants/outline_size = 5
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/normal_font_size = 15
+bbcode_enabled = true
+scroll_active = false
 autowrap_mode = 3
-clip_text = true
-text = "Short description goes here."
+
+[node name="RecommendButton" type="Button" parent="LandmarkBoardOverlay/Panel"]
+offset_left = 332.0
+offset_top = 230.0
+offset_right = 548.0
+offset_bottom = 266.0
+text = "Recommend This Place"
+
+[node name="RecommendStatusLabel" type="Label" parent="LandmarkBoardOverlay/Panel"]
+offset_left = 332.0
+offset_top = 270.0
+offset_right = 548.0
+offset_bottom = 300.0
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.85, 0.82, 0.75, 1)
+autowrap_mode = 3
 
 [node name="TagRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel"]
 offset_left = 332.0
