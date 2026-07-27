@@ -24,20 +24,27 @@ const TAG_LABELS := {
 	"pet_friendly": "Pet Friendly",
 }
 
-@onready var panel: PanelContainer = $Panel
-@onready var title_label: Label = $Panel/MainVBox/HeaderPanel/HeaderVBox/TitleLabel
-@onready var subtitle_label: Label = $Panel/MainVBox/HeaderPanel/HeaderVBox/SubtitleLabel
-@onready var photo_rect: TextureRect = $Panel/MainVBox/ContentMargin/ContentVBox/ImageDescRow/PhotoRect
-@onready var description_label: Label = (
-	$Panel/MainVBox/ContentMargin/ContentVBox/ImageDescRow/DescriptionLabel
-)
+# Every piece below lives in its own fixed-rect box directly under Panel
+# (a plain Panel, not a PanelContainer/VBoxContainer/HBoxContainer chain)
+# -- each box's position/size is authored explicitly in Main.tscn instead
+# of being computed by a parent container from its children's content.
+# The previous auto-fit layout hit a real Godot layout trap: an autowrap
+# Label's minimum-size negotiation inside an HBoxContainer collapsed to a
+# near-zero width, which ballooned its height, which then stretched a
+# sibling TextureRect to match. Fixed-rect boxes sidestep that whole class
+# of bug -- each element just clips/wraps within its own authored rect,
+# regardless of how long its content happens to be.
+@onready var panel: Panel = $Panel
+@onready var title_label: Label = $Panel/HeaderPanel/TitleLabel
+@onready var subtitle_label: Label = $Panel/HeaderPanel/SubtitleLabel
+@onready var photo_rect: TextureRect = $Panel/PhotoRect
+@onready var description_label: Label = $Panel/DescriptionLabel
 # Tags (wheelchair accessible, historic, etc.) sit bottom-left; status
 # badges (Visited, Recommended, Card available) sit bottom-right -- two
-# separate rows in the same BottomRow HBoxContainer rather than one
-# shared row, since a single mixed row read as one big pile with no
-# clear grouping.
-@onready var tag_row: HFlowContainer = $Panel/MainVBox/ContentMargin/ContentVBox/BottomRow/TagRow
-@onready var badge_row: HFlowContainer = $Panel/MainVBox/ContentMargin/ContentVBox/BottomRow/BadgeRow
+# separate fixed-rect boxes rather than one shared row, since a single
+# mixed row read as one big pile with no clear grouping.
+@onready var tag_row: HFlowContainer = $Panel/TagRow
+@onready var badge_row: HFlowContainer = $Panel/BadgeRow
 
 var _marker: LandmarkMarker = null
 var _camera: Camera3D = null
@@ -148,7 +155,6 @@ func _load_data() -> void:
 		return
 	_populate_badges(data.get("visited", false), data.get("recommendation_count", 0), has_uncollected_card)
 
-	panel.reset_size()
 	_update_position()
 
 
