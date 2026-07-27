@@ -186,15 +186,8 @@ bbcode_enabled = true
 scroll_active = false
 autowrap_mode = 3
 
-[node name="FavoriteButton" type="Button" parent="LandmarkBoardOverlay/Panel"]
-offset_left = 772.0
-offset_top = 404.0
-offset_right = 814.0
-offset_bottom = 446.0
-theme_override_font_sizes/font_size = 22
-text = "☆"
-
 [node name="TagRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel"]
+mouse_filter = 2
 offset_left = 332.0
 offset_top = 388.0
 offset_right = 548.0
@@ -203,12 +196,22 @@ theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 
 [node name="BadgeRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel"]
+mouse_filter = 2
 offset_left = 564.0
 offset_top = 388.0
-offset_right = 814.0
+offset_right = 764.0
 offset_bottom = 444.0
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
+
+[node name="FavoriteButton" type="Button" parent="LandmarkBoardOverlay/Panel"]
+offset_left = 772.0
+offset_top = 404.0
+offset_right = 814.0
+offset_bottom = 446.0
+theme_override_font_sizes/font_size = 26
+flat = true
+text = "☆"
 
 [node name="AtlasButton" type="CanvasLayer" parent="."]
 

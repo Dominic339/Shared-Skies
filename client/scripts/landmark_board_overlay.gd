@@ -302,7 +302,18 @@ func _load_favorite_state() -> void:
 		)
 	)
 	_is_favorited = not rows.is_empty()
+	_update_favorite_button_look()
+
+
+const FAVORITE_GOLD := Color(1, 0.85, 0.2, 1)
+const FAVORITE_HOLLOW_COLOR := Color(0.9, 0.9, 0.88, 1)
+
+
+func _update_favorite_button_look() -> void:
 	favorite_button.text = "★" if _is_favorited else "☆"
+	favorite_button.add_theme_color_override(
+		"font_color", FAVORITE_GOLD if _is_favorited else FAVORITE_HOLLOW_COLOR
+	)
 
 
 func _on_favorite_pressed() -> void:

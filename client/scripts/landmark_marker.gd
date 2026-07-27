@@ -156,13 +156,17 @@ func _apply_toon_demo_material(node: Node) -> void:
 			)
 			material.set_shader_parameter("use_vertex_color", false)
 			material.set_shader_parameter("light_bands", 3)
-			material.set_shader_parameter("band_softness", 0.15)
-			# The whole sign is built from flat boards, no curved
-			# surfaces -- see use_flat_face_normal's own comment in
-			# toon.gdshader for why this is needed to stop each flat
-			# board's two triangles from banding into visibly different
-			# shades of the same face.
-			material.set_shader_parameter("use_flat_face_normal", true)
+			# Forcing a flat per-face normal (use_flat_face_normal) briefly
+			# fixed the diagonal seam a flat board's two triangles could
+			# show, but it applies to every surface on the sign uniformly
+			# -- including whichever parts are actually curved/beveled and
+			# were relying on their real smoothed normals, which is what
+			# made the whole sign read as choppy/faceted afterward. A
+			# softer band transition hides the same original seam (a
+			# small normal difference no longer lands in two visibly
+			# different bands) without replacing any surface's real
+			# normal, curved or flat.
+			material.set_shader_parameter("band_softness", 0.4)
 			mesh_instance.set_surface_override_material(surface_idx, material)
 	for child in node.get_children():
 		_apply_toon_demo_material(child)
