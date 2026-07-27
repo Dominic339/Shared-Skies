@@ -168,21 +168,22 @@ func _apply_toon_demo_material(node: Node) -> void:
 				"albedo_tint", original.albedo_color if original else Color(0.4, 0.27, 0.15)
 			)
 			material.set_shader_parameter("use_vertex_color", false)
-			material.set_shader_parameter("light_bands", 3)
-			material.set_shader_parameter("band_softness", 0.15)
-			# Re-enabled after wrongly reverting it: this was dropped out of
-			# concern it would flatten curved surfaces, but pygltflib
-			# inspection of landmark_sign.glb proves the whole model is
-			# built entirely from flat, axis-aligned box faces -- there is
-			# no curved geometry anywhere on it for this to distort.
-			# Whatever caused the "choppy" look in that round (most likely
-			# the min_shade value also changed at the same time) wasn't
-			# this. Recomputing the normal per-fragment from screen-space
-			# derivatives of VERTEX guarantees every fragment on the same
-			# flat face gets a bit-for-bit identical normal, which a purely
-			# per-vertex normal (even a "clean" one) can't guarantee once
-			# GPU interpolation/rounding is involved -- the actual, provable
-			# fix for two triangles of one flat face disagreeing.
+			# The flat-normal fix (below) only moved the harsh contrast to a
+			# different sign rather than eliminating it -- meaning this was
+			# never really a precision bug. The sign's posts are boxy, real
+			# geometry with real 90-degree edges between faces, and hard
+			# 3-band toon shading under one strong directional light turns
+			# whichever real edge happens to face starkly toward vs. away
+			# from the light (depending on each sign's own rotation) into a
+			# jarring full-band brightness jump right at that edge. More
+			# bands plus a wider blend shrinks how big a jump any single
+			# real edge can show, instead of chasing a bug that isn't there.
+			material.set_shader_parameter("light_bands", 5)
+			material.set_shader_parameter("band_softness", 0.3)
+			# Kept even though it didn't turn out to be the real fix -- it's
+			# still the mathematically correct way to compute a flat face's
+			# normal (this model has no curved surfaces to distort), so
+			# there's no reason to give it up.
 			material.set_shader_parameter("use_flat_face_normal", true)
 			mesh_instance.set_surface_override_material(surface_idx, material)
 	for child in node.get_children():
