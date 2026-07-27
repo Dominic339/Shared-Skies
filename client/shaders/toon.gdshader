@@ -1,5 +1,18 @@
 shader_type spatial;
-render_mode blend_mix, cull_back, specular_disabled;
+// cull_disabled, not cull_back: the sign mesh's own glTF materials are
+// marked doubleSided -- Godot's normal import path honors that by
+// disabling backface culling, but this shader replaces the imported
+// material entirely and was hardcoding cull_back regardless, silently
+// throwing that away. Any triangle whose winding order doesn't agree
+// with its neighbors (independent of its normal -- winding and normal
+// can disagree even when the normal itself is fine) would render
+// correctly under the original double-sided material but get outright
+// culled here, leaving a gap that shows through to whatever's behind
+// it. That's what the "dark triangle" on the sign's posts actually
+// was: not a lighting or normal bug, a culled face -- confirmed by the
+// source mesh rendering perfectly clean in Blender's own viewport, with
+// its double-sided materials, matching identical vertex/normal data.
+render_mode blend_mix, cull_disabled, specular_disabled;
 
 // Reusable cel/toon-shaded material for Shared Skies' stylized look.
 // Two independent things combined into one shader:
