@@ -220,6 +220,8 @@ func _load_landmarks() -> void:
 		)
 		marker.position = GeoProjection.to_local(lat, lng)
 		marker.tapped.connect(_on_landmark_marker_tapped)
+		marker.card_state_changed.connect(_on_marker_card_state_changed)
+		marker.description_area_clicked.connect(_on_marker_description_area_clicked)
 		markers_by_landmark_id[marker.landmark_id] = marker
 
 
@@ -315,6 +317,20 @@ func _on_museum_button_pressed() -> void:
 
 func _on_community_recommendations_button_pressed() -> void:
 	community_recommendations_ui.show_recommendations()
+
+
+# A direct in-world collect (tapping a card on the physical sign, or the
+# quick-collect button) changes this Landmark's own card slots without
+# either UI ever being involved -- if one happens to be open on this same
+# Landmark right now, its badges/slot list are now stale until told to
+# refresh.
+func _on_marker_card_state_changed(marker: LandmarkMarker) -> void:
+	landmark_board_overlay.refresh_if_showing(marker)
+	landmark_display.refresh_card_slots_if_showing(marker)
+
+
+func _on_marker_description_area_clicked(marker: LandmarkMarker) -> void:
+	landmark_board_overlay.toggle_description_if_showing(marker)
 
 
 func _on_community_center_marker_tapped(marker: CommunityCenterMarker) -> void:

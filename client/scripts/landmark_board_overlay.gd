@@ -48,6 +48,11 @@ const TAG_LABELS := {
 
 var _marker: LandmarkMarker = null
 var _camera: Camera3D = null
+# Both fetched together in _load_data() -- toggle_description_if_showing()
+# just swaps which one is on screen, no extra round-trip needed.
+var _short_description: String = ""
+var _long_description: String = ""
+var _showing_long_description: bool = false
 
 
 func _ready() -> void:
@@ -124,8 +129,8 @@ func _load_data() -> void:
 	var rows: Array = await SupabaseClient.get_table(
 		"landmark_board_view",
 		(
-			"select=name,category,community_name,short_description,tags,cover_image_url,"
-			+ "visited,recommendation_count&id=eq.%s" % landmark_id
+			"select=name,category,community_name,short_description,long_description,tags,"
+			+ "cover_image_url,visited,recommendation_count&id=eq.%s" % landmark_id
 		)
 	)
 	# The target may have changed (or the overlay closed) while this
@@ -140,7 +145,11 @@ func _load_data() -> void:
 		String(data.get("category", "")).capitalize(), data.get("community_name", "")
 	]
 	var short_description: Variant = data.get("short_description")
-	description_label.text = short_description if short_description != null else ""
+	var long_description: Variant = data.get("long_description")
+	_short_description = short_description if short_description != null else ""
+	_long_description = long_description if long_description != null else _short_description
+	_showing_long_description = false
+	description_label.text = _short_description
 
 	_load_photo(data.get("cover_image_url"))
 
@@ -156,6 +165,16 @@ func _load_data() -> void:
 	_populate_badges(data.get("visited", false), data.get("recommendation_count", 0), has_uncollected_card)
 
 	_update_position()
+
+
+# Called by main.gd when the sign's physical description hotspot is
+# tapped -- both descriptions are already loaded (see _load_data()), so
+# this is a plain in-place swap, not a new fetch.
+func toggle_description_if_showing(marker: LandmarkMarker) -> void:
+	if _marker != marker:
+		return
+	_showing_long_description = not _showing_long_description
+	description_label.text = _long_description if _showing_long_description else _short_description
 
 
 func _load_photo(url: Variant) -> void:

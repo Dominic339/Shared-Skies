@@ -37,6 +37,17 @@ height = 0.04
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_Category"]
 albedo_color = Color(0.7, 0.7, 0.7, 1)
 
+[sub_resource type="CylinderMesh" id="CylinderMesh_QuickCollect"]
+top_radius = 0.12
+bottom_radius = 0.12
+height = 0.04
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_QuickCollect"]
+albedo_color = Color(0.3, 0.55, 0.85, 1)
+emission_enabled = true
+emission = Color(0.3, 0.55, 0.85, 1)
+emission_energy_multiplier = 1.2
+
 [node name="LandmarkMarker" type="Area3D"]
 script = ExtResource("1")
 
@@ -68,6 +79,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 2.6, -0.827)
 cast_shadow = 0
 mesh = SubResource("CylinderMesh_Category")
 surface_material_override/0 = SubResource("StandardMaterial3D_Category")
+
+[node name="QuickCollectButton" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04, 1.55, -1.09)
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_QuickCollect")
+surface_material_override/0 = SubResource("StandardMaterial3D_QuickCollect")
 
 [node name="NameLabel3D" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 2.75, 0.003)

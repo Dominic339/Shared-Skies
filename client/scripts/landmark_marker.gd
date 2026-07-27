@@ -2,6 +2,16 @@ class_name LandmarkMarker
 extends Area3D
 
 signal tapped(marker: LandmarkMarker)
+# Fired after a direct in-world interaction changes this Landmark's own
+# card slots (a collect) -- lets main.gd tell whichever UI happens to be
+# showing this same Landmark (the ambient board overlay, the popup) to
+# refresh their own badges/slot lists too, since those aren't reloaded
+# automatically just because the physical card object changed.
+signal card_state_changed(marker: LandmarkMarker)
+# Fired when the physical sign's description hotspot is tapped -- lets
+# main.gd tell the ambient board overlay to toggle between its short and
+# long description text.
+signal description_area_clicked(marker: LandmarkMarker)
 
 # Color-coded tag, not unique per-category art -- deliberately simple
 # until there's a reason to invest in real category iconography.
@@ -55,6 +65,40 @@ var selected: bool = false
 
 const ToonShader := preload("res://shaders/toon.gdshader")
 const ProfileCardHolderScene := preload("res://assets/models/profile_card_holder.glb")
+const ProfileCardScene := preload("res://assets/models/profile_card.glb")
+
+const OWN_CARD_TINT := Color(1, 0.85, 0.3)
+const COLLECTED_CARD_TINT := Color(0.45, 0.45, 0.45)
+
+# How close (in the marker's own local, unscaled space) a click's world hit
+# point has to land to a hotspot's authored position to count as hitting it.
+# These hotspots are read straight off the world-space point Godot's physics
+# picking already hands _on_input_event -- not separate overlapping Area3D
+# colliders, since multiple overlapping pickable colliders at effectively the
+# same depth (a card holder sitting right on the board's own front face) is
+# exactly the kind of thing Godot's closest-hit object picking can get
+# ambiguous about. One collision shape (the existing sign body), one
+# input_event, geometry-based dispatch.
+const CARD_HOTSPOT_RADIUS := 0.15
+
+# First-guess placement, same as every other "can't verify 3D placement
+# without seeing it rendered" problem this sign has hit -- expect to adjust
+# both of these from real in-game feedback once Dominic can actually tap
+# the sign and see where the hit lands relative to the button/board art.
+const QUICK_COLLECT_LOCAL_POSITION := Vector3(0.04, 1.55, -1.09)
+const QUICK_COLLECT_HOTSPOT_RADIUS := 0.18
+const DESCRIPTION_HOTSPOT_CENTER := Vector3(0.04, 1.0, -1.1)
+const DESCRIPTION_HOTSPOT_HALF_EXTENTS := Vector3(0.95, 0.5, 0.3)
+
+# One row (from profile_card_slots_view) per card slot, refreshed whenever
+# this Landmark's own cards might have changed -- lets the physical holders
+# show real occupancy instead of always sitting empty, and lets a direct
+# tap on an occupied holder know whether there's actually something
+# collectible there without a UI popup being open at all.
+var _slot_rows: Array = []
+# Static per-slot hotspot centers, built once when the holders themselves
+# are spawned (position doesn't depend on fetched data, only on slot count).
+var _holder_hotspots: Array = []
 
 # Card/holder models are each authored at their own local origin (0,0,0)
 # in their own files -- they don't carry a baked position relative to
@@ -119,6 +163,12 @@ func _apply_toon_demo_material(node: Node) -> void:
 			material.set_shader_parameter("use_vertex_color", false)
 			material.set_shader_parameter("light_bands", 3)
 			material.set_shader_parameter("band_softness", 0.15)
+			# The whole sign is built from flat boards, no curved
+			# surfaces -- see use_flat_face_normal's own comment in
+			# toon.gdshader for why this is needed to stop each flat
+			# board's two triangles from banding into visibly different
+			# shades of the same face.
+			material.set_shader_parameter("use_flat_face_normal", true)
 			mesh_instance.set_surface_override_material(surface_idx, material)
 	for child in node.get_children():
 		_apply_toon_demo_material(child)
@@ -151,30 +201,174 @@ func setup(
 	category_tag.set_surface_override_material(0, tag_material)
 
 	_spawn_card_holders(p_slot_count)
+	refresh_card_slots()
 
 
 # One holder per profile_card_slot_count -- as a Landmark upgrades and
 # gains slots, this just spawns more holders stacked above the first,
-# not a new system. Holders are permanent sign fixtures (unlike the
-# cards themselves, which only exist once a player actually places one
-# -- that's a separate, not-yet-built system).
+# not a new system. Holders are permanent sign fixtures; what's actually
+# sitting in one (a real card, or nothing) is separate, data-driven state
+# -- see refresh_card_slots()/_rebuild_card_visuals().
+#
+# Fit-tested position for a profile_card.glb instance inside a holder's
+# pocket -- no rotation correction needed (the card model has its upright
+# + 20 deg forward lean pre-baked to match the holder).
+const CARD_FIT_POSITION := Vector3(0.002, 0.03, 0)
+
+
 func _spawn_card_holders(slot_count: int) -> void:
 	for existing in card_holders.get_children():
 		existing.queue_free()
+	_holder_hotspots.clear()
 	for i in slot_count:
 		var holder := ProfileCardHolderScene.instantiate()
 		card_holders.add_child(holder)
-		holder.position = FIRST_SLOT_POSITION + Vector3(0, SLOT_SPACING * i, 0)
-		# Holders are permanent sign fixtures; cards are not spawned here
-		# -- real gameplay only shows a card once a player has actually
-		# left one, which isn't built yet. The fit test that used to spawn
-		# a card in every holder confirmed the placement/orientation
-		# works: preload("res://assets/models/profile_card.glb").instantiate()
-		# as a child of `holder`, no rotation correction needed (the model
-		# now has its upright + 20 deg forward lean pre-baked to match the
-		# holder), and card.position = Vector3(0.002, 0.03, 0) to sit
-		# correctly in the holder's pocket. Reuse these exact values when
-		# building real card placement.
+		var holder_position := FIRST_SLOT_POSITION + Vector3(0, SLOT_SPACING * i, 0)
+		holder.position = holder_position
+		_holder_hotspots.append({"slot_index": i, "position": holder_position})
+		# Real cards are spawned/removed by _rebuild_card_visuals() based on
+		# profile_card_slots_view data (see refresh_card_slots()), not here
+		# -- holders are permanent sign fixtures, but what's sitting in them
+		# depends on who's actually left/collected a card.
+
+
+# Re-fetches this Landmark's own card slots and rebuilds the physical card
+# objects in each holder to match -- called once on setup(), and again after
+# a direct in-world collect (see _collect_card()) or whenever main.gd is told
+# some other UI changed this same Landmark's slots.
+func refresh_card_slots() -> void:
+	var rows: Array = await SupabaseClient.get_table(
+		"profile_card_slots_view",
+		(
+			"select=slot_id,slot_index,placement_id,is_own_card,already_collected,occupied"
+			+ "&landmark_id=eq.%s&order=slot_index" % landmark_id
+		)
+	)
+	_slot_rows = rows
+	_rebuild_card_visuals()
+
+
+func _slot_row_for_index(index: int) -> Variant:
+	for row: Dictionary in _slot_rows:
+		if row.get("slot_index", -1) == index:
+			return row
+	return null
+
+
+func _rebuild_card_visuals() -> void:
+	for i in card_holders.get_child_count():
+		var holder: Node3D = card_holders.get_child(i)
+		var existing_card := holder.get_node_or_null("Card")
+		if existing_card:
+			existing_card.queue_free()
+
+		var row: Variant = _slot_row_for_index(i)
+		if row == null or not row.get("occupied", false):
+			continue
+
+		var card := ProfileCardScene.instantiate()
+		card.name = "Card"
+		holder.add_child(card)
+		card.position = CARD_FIT_POSITION
+		# Own card: gold, so you can spot it as yours. Someone else's card
+		# you've already collected your copy of: dimmed, same convention as
+		# landmark_display_ui.gd's popup (COLLECTED_COLOR) -- still a real
+		# object other players can still collect from, just not you again.
+		# Anything else here is a fresh, collectible card in its natural color.
+		if row.get("is_own_card", false):
+			_tint_card(card, OWN_CARD_TINT)
+		elif row.get("already_collected", false):
+			_tint_card(card, COLLECTED_CARD_TINT)
+
+
+func _tint_card(node: Node, tint: Color) -> void:
+	if node is MeshInstance3D:
+		var mesh_instance := node as MeshInstance3D
+		for surface_idx in mesh_instance.mesh.get_surface_count():
+			var original := mesh_instance.mesh.surface_get_material(surface_idx) as StandardMaterial3D
+			var duped := (original.duplicate() as StandardMaterial3D) if original else StandardMaterial3D.new()
+			duped.albedo_color = tint
+			mesh_instance.set_surface_override_material(surface_idx, duped)
+	for child in node.get_children():
+		_tint_card(child, tint)
+
+
+func _hotspot_slot_index(local_point: Vector3) -> int:
+	for hotspot: Dictionary in _holder_hotspots:
+		if local_point.distance_to(hotspot["position"]) <= CARD_HOTSPOT_RADIUS:
+			return hotspot["slot_index"]
+	return -1
+
+
+func _is_within_quick_collect_hotspot(local_point: Vector3) -> bool:
+	return local_point.distance_to(QUICK_COLLECT_LOCAL_POSITION) <= QUICK_COLLECT_HOTSPOT_RADIUS
+
+
+func _is_within_description_hotspot(local_point: Vector3) -> bool:
+	var offset := (local_point - DESCRIPTION_HOTSPOT_CENTER).abs()
+	return (
+		offset.x <= DESCRIPTION_HOTSPOT_HALF_EXTENTS.x
+		and offset.y <= DESCRIPTION_HOTSPOT_HALF_EXTENTS.y
+		and offset.z <= DESCRIPTION_HOTSPOT_HALF_EXTENTS.z
+	)
+
+
+# Tapping directly on an occupied, not-yet-collected, not-your-own card is
+# the direct-interaction equivalent of the popup's "Collect" button. Empty
+# slots and your own card don't do anything on a direct tap yet -- leaving
+# your own card still goes through the popup's "Leave My Card" button until
+# that also moves out here (a later phase).
+func _on_slot_hotspot_clicked(slot_index: int) -> void:
+	if not in_range:
+		return
+	var row: Variant = _slot_row_for_index(slot_index)
+	if row == null:
+		return
+	if row.get("occupied", false) and not row.get("is_own_card", false) and not row.get("already_collected", false):
+		_collect_card(row.get("placement_id", ""), slot_index)
+
+
+func _quick_collect() -> void:
+	if not in_range:
+		return
+	for row: Dictionary in _slot_rows:
+		if row.get("occupied", false) and not row.get("is_own_card", false) and not row.get("already_collected", false):
+			_collect_card(row.get("placement_id", ""), row.get("slot_index", 0))
+			return
+	# Nothing collectible right now -- silently a no-op. The ambient board
+	# overlay's "Card available" badge is the real indicator of whether this
+	# button will actually do anything.
+
+
+func _collect_card(placement_id: String, slot_index: int) -> void:
+	var holder: Node3D = card_holders.get_child(slot_index)
+	var card: Node3D = holder.get_node_or_null("Card")
+
+	var row := await SupabaseClient.insert_row("profile_card_collections", {
+		"placement_id": placement_id,
+		"collected_by": SupabaseClient.user_id,
+	})
+	if row.is_empty():
+		print("Failed to collect card for placement %s" % placement_id)
+		return
+
+	if card:
+		await _play_collect_animation(card)
+	await refresh_card_slots()
+	card_state_changed.emit(self)
+
+
+# "Up and out" -- lifts straight up out of the holder pocket first (reads as
+# physically freeing the card), then arcs further up and away from the sign
+# while shrinking to nothing, rather than just vanishing in place.
+func _play_collect_animation(card: Node3D) -> void:
+	var start_position := card.position
+	var tween := create_tween()
+	tween.tween_property(card, "position", start_position + Vector3(0, 0.15, 0), 0.2)
+	tween.tween_property(card, "position", start_position + Vector3(0, 0.55, 0.45), 0.4)
+	tween.parallel().tween_property(card, "scale", Vector3.ZERO, 0.4)
+	await tween.finished
+	card.queue_free()
 
 
 func set_in_range(value: bool) -> void:
@@ -212,9 +406,31 @@ const FRONT_AXIS_CORRECTION_DEGREES := -90.0
 
 
 func _on_input_event(
-	_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int
+	_camera: Node, event: InputEvent, click_position: Vector3, _normal: Vector3, _shape_idx: int
 ) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		tapped.emit(self)
-	elif event is InputEventScreenTouch and event.pressed:
-		tapped.emit(self)
+	var pressed := (
+		(event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+		or (event is InputEventScreenTouch and event.pressed)
+	)
+	if not pressed:
+		return
+
+	# click_position is the world-space point Godot's physics picking hit on
+	# this sign's own collision shape -- converting to local space and
+	# checking it against the hotspots above lets one collider serve several
+	# different physical interactions instead of needing a separate Area3D
+	# (and its overlapping-collider ambiguity) per hotspot.
+	var local_point := to_local(click_position)
+
+	var slot_index := _hotspot_slot_index(local_point)
+	if slot_index != -1:
+		_on_slot_hotspot_clicked(slot_index)
+		return
+	if _is_within_quick_collect_hotspot(local_point):
+		_quick_collect()
+		return
+	if _is_within_description_hotspot(local_point):
+		description_area_clicked.emit(self)
+		return
+
+	tapped.emit(self)

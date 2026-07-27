@@ -49,6 +49,21 @@ uniform bool use_normal_texture = false;
 uniform vec2 normal_uv_offset = vec2(0.0);
 uniform vec2 normal_uv_scale = vec2(1.0);
 
+// For meshes with no curved surfaces at all (e.g. the Landmark sign,
+// built entirely from flat boards) -- a flat quad is still two
+// triangles, and if their vertex normals aren't perfectly averaged
+// (flat/non-smoothed export, or just floating-point drift), each
+// triangle's interpolated NORMAL differs just enough that the hard
+// banding below quantizes them into different bands, showing up as a
+// visible diagonal seam splitting the "flat" face into two differently
+// shaded triangles. Recomputing the normal per-fragment from screen-space
+// derivatives of VERTEX guarantees every fragment on the same flat face
+// gets the exact same normal regardless of how it's triangulated or how
+// its authored vertex normals were smoothed. Don't enable this on curved
+// models -- it replaces smooth per-vertex normals with a hard per-face
+// one, which would make curved geometry look faceted/low-poly.
+uniform bool use_flat_face_normal = false;
+
 void fragment() {
 	vec4 base_color = albedo_tint;
 	if (use_vertex_color) {
@@ -63,6 +78,10 @@ void fragment() {
 	if (use_normal_texture) {
 		vec2 transformed_uv = UV * normal_uv_scale + normal_uv_offset;
 		NORMAL_MAP = texture(normal_texture, transformed_uv).rgb;
+	}
+
+	if (use_flat_face_normal) {
+		NORMAL = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
 	}
 }
 

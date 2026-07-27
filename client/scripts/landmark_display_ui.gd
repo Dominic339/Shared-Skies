@@ -236,6 +236,14 @@ func _on_collect_card_pressed(placement_id: String) -> void:
 	_board_overlay.refresh_if_showing(_marker)
 
 
+# Called by main.gd when a direct in-world action (a tap on the physical
+# sign, not this popup) changed this same Landmark's own card slots --
+# e.g. the quick-collect button, or tapping a card directly.
+func refresh_card_slots_if_showing(marker: LandmarkMarker) -> void:
+	if _marker == marker:
+		await _load_card_slots()
+
+
 func _on_close_pressed() -> void:
 	hide()
 	_marker = null
