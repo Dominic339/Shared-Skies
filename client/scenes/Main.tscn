@@ -19,6 +19,27 @@
 [ext_resource type="Script" path="res://scripts/stamp_desk_ui.gd" id="18"]
 [ext_resource type="Script" path="res://scripts/landmark_board_overlay.gd" id="19"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_BoardBackground"]
+bg_color = Color(0.87, 0.79, 0.63, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.35, 0.22, 0.1, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Header"]
+bg_color = Color(0.16, 0.32, 0.22, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
 
@@ -140,34 +161,66 @@ script = ExtResource("19")
 [node name="Panel" type="PanelContainer" parent="LandmarkBoardOverlay"]
 offset_left = 0.0
 offset_top = 0.0
-offset_right = 320.0
-offset_bottom = 420.0
+offset_right = 620.0
+offset_bottom = 300.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_BoardBackground")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="LandmarkBoardOverlay/Panel"]
+[node name="MainVBox" type="VBoxContainer" parent="LandmarkBoardOverlay/Panel"]
+theme_override_constants/separation = 0
 
-[node name="TitleLabel" type="Label" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
-theme_override_font_sizes/font_size = 24
+[node name="HeaderPanel" type="PanelContainer" parent="LandmarkBoardOverlay/Panel/MainVBox"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_Header")
+
+[node name="HeaderVBox" type="VBoxContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/HeaderPanel"]
+theme_override_constants/separation = 2
+
+[node name="TitleLabel" type="Label" parent="LandmarkBoardOverlay/Panel/MainVBox/HeaderPanel/HeaderVBox"]
+theme_override_font_sizes/font_size = 26
+theme_override_colors/font_color = Color(0.96, 0.93, 0.85, 1)
 autowrap_mode = 3
 text = "Landmark Name"
 
-[node name="SubtitleLabel" type="Label" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
-theme_override_font_sizes/font_size = 16
+[node name="SubtitleLabel" type="Label" parent="LandmarkBoardOverlay/Panel/MainVBox/HeaderPanel/HeaderVBox"]
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.78, 0.85, 0.75, 1)
 text = "Category · Community"
 
-[node name="PhotoRect" type="TextureRect" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
-custom_minimum_size = Vector2(0, 180)
+[node name="ContentMargin" type="MarginContainer" parent="LandmarkBoardOverlay/Panel/MainVBox"]
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="ContentHBox" type="HBoxContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin"]
+theme_override_constants/separation = 16
+
+[node name="LeftColumn" type="VBoxContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 8
+
+[node name="DescriptionLabel" type="Label" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn"]
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.28, 0.2, 0.11, 1)
+autowrap_mode = 3
+text = "Short description goes here."
+
+[node name="TagRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn"]
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="BadgeRow" type="HFlowContainer" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn"]
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="PhotoRect" type="TextureRect" parent="LandmarkBoardOverlay/Panel/MainVBox/ContentMargin/ContentHBox"]
+custom_minimum_size = Vector2(260, 180)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.4
 expand_mode = 1
 stretch_mode = 6
-
-[node name="DescriptionLabel" type="Label" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
-autowrap_mode = 3
-text = ""
-
-[node name="TagRow" type="HBoxContainer" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
-theme_override_constants/separation = 8
-
-[node name="BadgeRow" type="HBoxContainer" parent="LandmarkBoardOverlay/Panel/VBoxContainer"]
-theme_override_constants/separation = 8
 
 [node name="AtlasButton" type="CanvasLayer" parent="."]
 

@@ -25,12 +25,16 @@ const TAG_LABELS := {
 }
 
 @onready var panel: PanelContainer = $Panel
-@onready var title_label: Label = $Panel/VBoxContainer/TitleLabel
-@onready var subtitle_label: Label = $Panel/VBoxContainer/SubtitleLabel
-@onready var photo_rect: TextureRect = $Panel/VBoxContainer/PhotoRect
-@onready var description_label: Label = $Panel/VBoxContainer/DescriptionLabel
-@onready var tag_row: HBoxContainer = $Panel/VBoxContainer/TagRow
-@onready var badge_row: HBoxContainer = $Panel/VBoxContainer/BadgeRow
+@onready var title_label: Label = $Panel/MainVBox/HeaderPanel/HeaderVBox/TitleLabel
+@onready var subtitle_label: Label = $Panel/MainVBox/HeaderPanel/HeaderVBox/SubtitleLabel
+@onready var photo_rect: TextureRect = $Panel/MainVBox/ContentMargin/ContentHBox/PhotoRect
+@onready var description_label: Label = (
+	$Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/DescriptionLabel
+)
+@onready var tag_row: HFlowContainer = $Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/TagRow
+@onready var badge_row: HFlowContainer = (
+	$Panel/MainVBox/ContentMargin/ContentHBox/LeftColumn/BadgeRow
+)
 
 var _marker: LandmarkMarker = null
 var _camera: Camera3D = null
@@ -139,34 +143,62 @@ func _load_photo(url: Variant) -> void:
 	# pipeline actually produces a remotely-hosted photo.
 
 
+const TAG_CHIP_COLOR := Color(0.62, 0.48, 0.24, 1)
+const TAG_CHIP_TEXT_COLOR := Color(0.98, 0.95, 0.88, 1)
+const VISITED_CHIP_COLOR := Color(0.3, 0.55, 0.32, 1)
+const VISITED_CHIP_TEXT_COLOR := Color(0.97, 0.98, 0.95, 1)
+const RECOMMENDED_CHIP_COLOR := Color(0.78, 0.58, 0.18, 1)
+const RECOMMENDED_CHIP_TEXT_COLOR := Color(0.22, 0.15, 0.03, 1)
+const CARD_CHIP_COLOR := Color(0.27, 0.47, 0.68, 1)
+const CARD_CHIP_TEXT_COLOR := Color(0.96, 0.98, 1, 1)
+
+
+# Small rounded, colored pill -- a plain Label reads as a debug value,
+# not a real UI element. Built in script rather than authored per-chip
+# in the .tscn since the actual set of tags/badges is only known once
+# the Landmark's own data loads.
+func _make_chip(text: String, bg_color: Color, text_color: Color) -> PanelContainer:
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_right = 8
+	style.corner_radius_bottom_left = 8
+	style.content_margin_left = 8.0
+	style.content_margin_right = 8.0
+	style.content_margin_top = 3.0
+	style.content_margin_bottom = 3.0
+
+	var chip := PanelContainer.new()
+	chip.add_theme_stylebox_override("panel", style)
+
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", text_color)
+	chip.add_child(label)
+
+	return chip
+
+
 func _populate_tags(tags: Array) -> void:
 	for child in tag_row.get_children():
 		child.queue_free()
 	for tag: String in tags:
-		var chip := Label.new()
-		chip.text = TAG_LABELS.get(tag, tag)
-		chip.add_theme_font_size_override("font_size", 14)
-		tag_row.add_child(chip)
+		tag_row.add_child(_make_chip(TAG_LABELS.get(tag, tag), TAG_CHIP_COLOR, TAG_CHIP_TEXT_COLOR))
 
 
 func _populate_badges(visited: bool, recommendation_count: int, has_uncollected_card: bool) -> void:
 	for child in badge_row.get_children():
 		child.queue_free()
 	if visited:
-		var visited_badge := Label.new()
-		visited_badge.text = "Visited"
-		visited_badge.add_theme_font_size_override("font_size", 14)
-		badge_row.add_child(visited_badge)
+		badge_row.add_child(_make_chip("Visited", VISITED_CHIP_COLOR, VISITED_CHIP_TEXT_COLOR))
 	if recommendation_count > 0:
-		var recommended_badge := Label.new()
-		recommended_badge.text = "Recommended (%d)" % recommendation_count
-		recommended_badge.add_theme_font_size_override("font_size", 14)
-		badge_row.add_child(recommended_badge)
+		badge_row.add_child(_make_chip(
+			"Recommended (%d)" % recommendation_count, RECOMMENDED_CHIP_COLOR, RECOMMENDED_CHIP_TEXT_COLOR
+		))
 	if has_uncollected_card:
-		var card_badge := Label.new()
-		card_badge.text = "Card available"
-		card_badge.add_theme_font_size_override("font_size", 14)
-		badge_row.add_child(card_badge)
+		badge_row.add_child(_make_chip("Card available", CARD_CHIP_COLOR, CARD_CHIP_TEXT_COLOR))
 
 
 # Reuses profile_card_slots_view rather than a second query shape --
