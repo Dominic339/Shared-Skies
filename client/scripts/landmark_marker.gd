@@ -169,15 +169,21 @@ func _apply_toon_demo_material(node: Node) -> void:
 			)
 			material.set_shader_parameter("use_vertex_color", false)
 			material.set_shader_parameter("light_bands", 3)
-			# Neither this nor use_flat_face_normal were ever the real fix
-			# for the "dark triangle on a flat board" artifact -- direct
-			# inspection of landmark_sign.glb's normals (pygltflib) shows
-			# every face already has perfectly clean, axis-aligned
-			# flat-shaded normals. The actual cause was shadow acne on the
-			# DirectionalLight3D itself (see Main.tscn); back to the
-			# original crisp band transition now that the real cause is
-			# fixed at the light instead of papered over here.
 			material.set_shader_parameter("band_softness", 0.15)
+			# Re-enabled after wrongly reverting it: this was dropped out of
+			# concern it would flatten curved surfaces, but pygltflib
+			# inspection of landmark_sign.glb proves the whole model is
+			# built entirely from flat, axis-aligned box faces -- there is
+			# no curved geometry anywhere on it for this to distort.
+			# Whatever caused the "choppy" look in that round (most likely
+			# the min_shade value also changed at the same time) wasn't
+			# this. Recomputing the normal per-fragment from screen-space
+			# derivatives of VERTEX guarantees every fragment on the same
+			# flat face gets a bit-for-bit identical normal, which a purely
+			# per-vertex normal (even a "clean" one) can't guarantee once
+			# GPU interpolation/rounding is involved -- the actual, provable
+			# fix for two triangles of one flat face disagreeing.
+			material.set_shader_parameter("use_flat_face_normal", true)
 			mesh_instance.set_surface_override_material(surface_idx, material)
 	for child in node.get_children():
 		_apply_toon_demo_material(child)
