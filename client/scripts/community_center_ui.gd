@@ -2,8 +2,9 @@ extends CanvasLayer
 
 # The Community Center hub -- a temporary flat menu standing in for the
 # real building/interior. Opens the SAME screens and backend functions
-# already built for the Board, Museum, Post Office, and Recommendations
-# rather than reimplementing any of them -- this is purely a front door.
+# already built for the Board, Museum, Post Office, Recommendations,
+# and now the Stamp Desk rather than reimplementing any of them -- this
+# is purely a front door.
 
 signal closed
 
@@ -21,6 +22,8 @@ var _community_board_ui: CanvasLayer
 var _museum_ui: CanvasLayer
 var _mailbox_ui: CanvasLayer
 var _community_recommendations_ui: CanvasLayer
+var _stamp_desk_ui: CanvasLayer
+var _community_id: String = ""
 
 
 func _ready() -> void:
@@ -28,10 +31,10 @@ func _ready() -> void:
 	museum_button.pressed.connect(_on_museum_pressed)
 	post_office_button.pressed.connect(_on_post_office_pressed)
 	recommendations_button.pressed.connect(_on_recommendations_pressed)
+	stamp_desk_button.pressed.connect(_on_stamp_desk_pressed)
 	close_button.pressed.connect(_on_close_pressed)
-	# Not built yet -- Community Stamps and postcard reprints are
-	# planned next, this just reserves their place in the hub menu.
-	stamp_desk_button.disabled = true
+	# Not built yet -- postcard reprints is still just a reserved place
+	# in the hub menu.
 	postcard_reprints_button.disabled = true
 	hide()
 
@@ -40,15 +43,18 @@ func _ready() -> void:
 # this hub never needs its own duplicate logic for any of them.
 func setup_links(
 	community_board_ui: CanvasLayer, museum_ui: CanvasLayer,
-	mailbox_ui: CanvasLayer, community_recommendations_ui: CanvasLayer
+	mailbox_ui: CanvasLayer, community_recommendations_ui: CanvasLayer,
+	stamp_desk_ui: CanvasLayer
 ) -> void:
 	_community_board_ui = community_board_ui
 	_museum_ui = museum_ui
 	_mailbox_ui = mailbox_ui
 	_community_recommendations_ui = community_recommendations_ui
+	_stamp_desk_ui = stamp_desk_ui
 
 
-func show_hub(center_name: String) -> void:
+func show_hub(community_id: String, center_name: String) -> void:
+	_community_id = community_id
 	name_label.text = center_name
 	show()
 
@@ -71,6 +77,11 @@ func _on_post_office_pressed() -> void:
 func _on_recommendations_pressed() -> void:
 	hide()
 	_community_recommendations_ui.show_recommendations()
+
+
+func _on_stamp_desk_pressed() -> void:
+	hide()
+	_stamp_desk_ui.show_stamp_desk(_community_id)
 
 
 func _on_close_pressed() -> void:

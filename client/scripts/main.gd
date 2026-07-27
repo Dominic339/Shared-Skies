@@ -43,6 +43,7 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 @onready var community_recommendations_ui: CanvasLayer = $CommunityRecommendationsUI
 @onready var community_center_markers: Node3D = $CommunityCenterMarkers
 @onready var community_center_ui: CanvasLayer = $CommunityCenterUI
+@onready var stamp_desk_ui: CanvasLayer = $StampDeskUI
 @onready var nearby_ui: CanvasLayer = $NearbyUI
 
 var markers_by_landmark_id: Dictionary = {}
@@ -65,7 +66,7 @@ func _ready() -> void:
 	museum_button.pressed.connect(_on_museum_button_pressed)
 	community_recommendations_button.pressed.connect(_on_community_recommendations_button_pressed)
 	community_center_ui.setup_links(
-		community_board_ui, museum_ui, mailbox_ui, community_recommendations_ui
+		community_board_ui, museum_ui, mailbox_ui, community_recommendations_ui, stamp_desk_ui
 	)
 	nearby_ui.setup(landmark_markers, community_center_markers, player_marker, PROXIMITY_RADIUS_METERS)
 	nearby_ui.landmark_tapped.connect(_on_landmark_marker_tapped)
@@ -120,6 +121,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if community_recommendations_ui.close_topmost():
 			return
 		if community_center_ui.close_topmost():
+			return
+		if stamp_desk_ui.close_topmost():
 			return
 		if landmark_display.close_topmost():
 			return
@@ -311,7 +314,7 @@ func _on_community_recommendations_button_pressed() -> void:
 
 
 func _on_community_center_marker_tapped(marker: CommunityCenterMarker) -> void:
-	community_center_ui.show_hub(marker.center_name)
+	community_center_ui.show_hub(marker.community_id, marker.center_name)
 
 
 func _record_visit(marker: LandmarkMarker) -> void:

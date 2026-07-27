@@ -16,6 +16,7 @@
 [ext_resource type="Script" path="res://scripts/community_recommendations_ui.gd" id="15"]
 [ext_resource type="Script" path="res://scripts/community_center_ui.gd" id="16"]
 [ext_resource type="Script" path="res://scripts/nearby_ui.gd" id="17"]
+[ext_resource type="Script" path="res://scripts/stamp_desk_ui.gd" id="18"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(6000, 6000)
@@ -641,12 +642,39 @@ text = "Post Office / Mailbox"
 text = "Recommended Places"
 
 [node name="StampDeskButton" type="Button" parent="CommunityCenterUI/Panel/VBoxContainer"]
-text = "Stamp Desk (coming soon)"
+text = "Stamp Desk"
 
 [node name="PostcardReprintsButton" type="Button" parent="CommunityCenterUI/Panel/VBoxContainer"]
 text = "Postcard Reprints (coming soon)"
 
 [node name="CloseButton" type="Button" parent="CommunityCenterUI/Panel/VBoxContainer"]
+text = "Close"
+
+[node name="StampDeskUI" type="CanvasLayer" parent="."]
+script = ExtResource("18")
+
+[node name="Panel" type="PanelContainer" parent="StampDeskUI"]
+offset_left = 60.0
+offset_top = 220.0
+offset_right = 1020.0
+offset_bottom = 1400.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="StampDeskUI/Panel"]
+
+[node name="TitleLabel" type="Label" parent="StampDeskUI/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 32
+text = "Stamp Desk"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="StampDeskUI/Panel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="EntriesContainer" type="VBoxContainer" parent="StampDeskUI/Panel/VBoxContainer/ScrollContainer"]
+size_flags_horizontal = 3
+
+[node name="StatusLabel" type="Label" parent="StampDeskUI/Panel/VBoxContainer"]
+text = ""
+
+[node name="CloseButton" type="Button" parent="StampDeskUI/Panel/VBoxContainer"]
 text = "Close"
 
 [node name="NearbyUI" type="CanvasLayer" parent="."]
