@@ -147,6 +147,19 @@ func _ready() -> void:
 func _apply_toon_demo_material(node: Node) -> void:
 	if node is MeshInstance3D:
 		var mesh_instance := node as MeshInstance3D
+		# The board face itself is clean now (see the shadow_bias fix on
+		# DirectionalLight3D), but the posts still showed a hard diagonal
+		# shadow cast by the sign's own diagonal cross-brace onto them --
+		# a real, geometrically correct self-shadow, but the toon shader's
+		# attenuation has no soft penumbra (only light_bands=3, no blur),
+		# so any self-cast shadow reads as a jarring flat-colored patch
+		# instead of a natural shadow. The per-face toon banding already
+		# gives every face its own shaded look based on the light's
+		# direction -- a real shadow map between the sign's own parts on
+		# top of that isn't adding depth, just artifacts, so the whole
+		# sign simply stops casting (and by extension self-shadowing)
+		# entirely.
+		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for surface_idx in mesh_instance.mesh.get_surface_count():
 			var original := mesh_instance.mesh.surface_get_material(surface_idx) as StandardMaterial3D
 			var material := ShaderMaterial.new()
