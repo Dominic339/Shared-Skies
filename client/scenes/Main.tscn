@@ -42,8 +42,22 @@ height = 1.0
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2"]
 albedo_color = Color(0.2, 0.4, 0.9, 1)
 
+# background_mode = 4 (BG_KEEP) leaves whatever clear-color/background was
+# already showing untouched -- only ambient is being added here, real
+# bounce light filling in shadowed faces the way it does outdoors in real
+# life, rather than the shader's own min_shade doing that job with an
+# artificial flat floor.
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 4
+ambient_light_source = 2
+ambient_light_color = Color(0.65, 0.68, 0.72, 1)
+ambient_light_energy = 0.9
+
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 mesh = SubResource("PlaneMesh_1")
