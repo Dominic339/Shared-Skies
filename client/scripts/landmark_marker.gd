@@ -403,6 +403,37 @@ func _play_collect_animation(card: Node3D) -> void:
 	card.queue_free()
 
 
+var _fade_tween: Tween = null
+
+
+# Fades this whole marker toward invisible (1.0) or back to fully opaque
+# (0.0) -- used by main.gd when a NEARBY Landmark is focused, since two
+# real signs can end up seeded close enough together (some are only a few
+# meters apart) that the focus camera's fixed ~5.5m orbit distance from
+# the one being looked at clips straight through this one otherwise.
+# Simpler and more robust than trying to steer the camera around
+# obstacles: just get the obstacle out of the way visually. Also stops
+# this marker from being tappable while faded, so a nearly-invisible sign
+# can't be accidentally interacted with.
+func fade_to(target_transparency: float, duration: float = 0.3) -> void:
+	input_ray_pickable = target_transparency < 0.5
+	if _fade_tween and _fade_tween.is_valid():
+		_fade_tween.kill()
+	_fade_tween = create_tween()
+	_fade_tween.set_parallel(true)
+	for mesh_instance: MeshInstance3D in _collect_mesh_instances(self):
+		_fade_tween.tween_property(mesh_instance, "transparency", target_transparency, duration)
+
+
+func _collect_mesh_instances(node: Node) -> Array:
+	var result: Array = []
+	if node is MeshInstance3D:
+		result.append(node)
+	for child in node.get_children():
+		result.append_array(_collect_mesh_instances(child))
+	return result
+
+
 func set_in_range(value: bool) -> void:
 	# Rising edge only -- a one-shot burst when you actually arrive, not a
 	# permanent ambient loop (was always emitting before, regardless of

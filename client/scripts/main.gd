@@ -19,6 +19,14 @@ const FOCUS_PITCH_DEGREES := 0.0  # fully level -- flat-on with the board, not l
 # edge instead of its middle; see landmark_marker.gd's FIRST_SLOT_POSITION
 # comment for the fix.
 const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
+# Real-world Landmarks can be seeded surprisingly close together (some are
+# only a couple meters apart) -- close enough that the focus camera's fixed
+# FOCUS_ZOOM orbit distance from whichever one is tapped clips straight
+# through a neighbor's sign. Anything else within this radius of the
+# focused Landmark fades toward invisible instead (see
+# LandmarkMarker.fade_to()) rather than trying to steer the camera around
+# obstacles.
+const NEARBY_FADE_RADIUS_METERS := 12.0
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ground: Node3D = $Ground
@@ -51,6 +59,7 @@ var focused_marker: LandmarkMarker = null
 var _zoom_before_focus: float = 50.0
 var _pitch_before_focus: float = 55.0
 var _yaw_before_focus: float = 0.0
+var _faded_markers: Array[LandmarkMarker] = []
 
 
 func _ready() -> void:
@@ -262,6 +271,12 @@ func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 	elif focused_marker != marker:
 		focused_marker.set_selected(false)
 
+	# Restore whatever was faded for the PREVIOUS focus (if any) before
+	# computing fades for this one -- switching focus directly from one
+	# Landmark to another (without closing in between) would otherwise
+	# leave stale fades from the old target lingering.
+	_restore_faded_markers()
+
 	focused_marker = marker
 	marker.set_selected(true)
 	# The sign itself never rotates (it's a static object, like a real
@@ -273,10 +288,26 @@ func _on_landmark_marker_tapped(marker: LandmarkMarker) -> void:
 	camera.locked = true
 	camera.animate_zoom_to(FOCUS_ZOOM)
 	camera.animate_pitch_to(FOCUS_PITCH_DEGREES)
+	_fade_nearby_markers(marker)
 
 	landmark_board_overlay.show_for(marker, camera)
 	if marker.in_range:
 		await _record_visit(marker)
+
+
+func _fade_nearby_markers(focused: LandmarkMarker) -> void:
+	for other: LandmarkMarker in markers_by_landmark_id.values():
+		if other == focused:
+			continue
+		if other.global_position.distance_to(focused.global_position) <= NEARBY_FADE_RADIUS_METERS:
+			other.fade_to(1.0)
+			_faded_markers.append(other)
+
+
+func _restore_faded_markers() -> void:
+	for other: LandmarkMarker in _faded_markers:
+		other.fade_to(0.0)
+	_faded_markers.clear()
 
 
 # Named for the board overlay's closed signal -- it already hides itself
@@ -286,6 +317,7 @@ func _on_board_overlay_closed() -> void:
 	if focused_marker:
 		focused_marker.set_selected(false)
 	focused_marker = null
+	_restore_faded_markers()
 	camera.locked = false
 	camera.yaw_degrees = _yaw_before_focus
 	camera.animate_zoom_to(_zoom_before_focus)
