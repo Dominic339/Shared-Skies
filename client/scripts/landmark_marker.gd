@@ -137,6 +137,14 @@ func _ready() -> void:
 	_apply_toon_demo_material(sign_model)
 
 
+# Light layer bit reserved for Landmark signs (see Main.tscn's
+# DirectionalLight3D.light_cull_mask and Camera3D/SignCameraLight) --
+# every sign is lit only by a light attached to the camera instead of the
+# one fixed world sun, so every sign reads the same regardless of its own
+# facing_degrees or which way the camera happens to be orbiting.
+const SIGN_LIGHT_LAYER := 2
+
+
 # TEMPORARY: applies toon/cel-shading on top of the sign model's own
 # authored colors (read from each surface's original imported material)
 # rather than forcing one hardcoded tint -- preserves whatever Dominic
@@ -147,6 +155,7 @@ func _ready() -> void:
 func _apply_toon_demo_material(node: Node) -> void:
 	if node is MeshInstance3D:
 		var mesh_instance := node as MeshInstance3D
+		mesh_instance.layers = SIGN_LIGHT_LAYER
 		# Shadow-casting was disabled entirely at one point while chasing
 		# what turned out to be a misdiagnosis -- the actual "dark
 		# triangle" bug was cull_back silently culling backward-wound

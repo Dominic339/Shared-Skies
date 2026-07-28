@@ -78,10 +78,28 @@ shadow_enabled = true
 # that worst.
 shadow_bias = 0.05
 shadow_normal_bias = 2.0
+# Layer 2 (bit value 2) is reserved for Landmark signs, which light
+# themselves from a light attached to the camera instead (see
+# Camera3D/SignCameraLight below) -- a fixed world light means each
+# sign's own real geometry sits at whatever angle its rotation happens
+# to put it at relative to this light, and different signs ended up with
+# very different, inconsistent-looking shading purely from which way
+# they face. Excluding layer 2 here keeps this light out of that
+# entirely, while still lighting everything else in the world normally.
+light_cull_mask = 1048573
 
 [node name="Camera3D" type="Camera3D" parent="."]
 current = true
 script = ExtResource("3")
+
+[node name="SignCameraLight" type="DirectionalLight3D" parent="Camera3D"]
+# No rotation relative to the camera -- its local -Z (forward) always
+# matches the camera's own view direction, so it lights whatever's
+# currently in view exactly the same way regardless of the camera's
+# orbit angle or a sign's own facing_degrees. Only layer 2 (Landmark
+# signs) responds to it; nothing else in the world is on that layer.
+light_cull_mask = 2
+shadow_enabled = false
 
 [node name="PlayerMarker" type="Node3D" parent="."]
 
