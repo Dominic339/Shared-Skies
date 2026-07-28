@@ -42,11 +42,6 @@ height = 1.0
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2"]
 albedo_color = Color(0.2, 0.4, 0.9, 1)
 
-# background_mode = 4 (BG_KEEP) leaves whatever clear-color/background was
-# already showing untouched -- only ambient is being added here, real
-# bounce light filling in shadowed faces the way it does outdoors in real
-# life, rather than the shader's own min_shade doing that job with an
-# artificial flat floor.
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 4
 ambient_light_source = 2
@@ -66,26 +61,8 @@ surface_material_override/0 = SubResource("StandardMaterial3D_1")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 5, 0)
 shadow_enabled = true
-# The "dark triangle on a flat board" artifact turned out to be neither a
-# mesh-normal problem nor a shader problem -- inspecting landmark_sign.glb
-# directly (pygltflib) shows every face already has perfectly clean,
-# axis-aligned flat-shaded normals with zero drift between its two
-# triangles. With no bias tuned at all, this light's shadow map was
-# self-shadowing those same flat faces (classic shadow acne: the surface
-# incorrectly shadows itself, and because it's split into two triangles,
-# one can end up on the "acne" side and its neighbor doesn't). This
-# grazing, off-axis light direction is exactly the condition that makes
-# that worst.
 shadow_bias = 0.05
 shadow_normal_bias = 2.0
-# Layer 2 (bit value 2) is reserved for Landmark signs, which light
-# themselves from a light attached to the camera instead (see
-# Camera3D/SignCameraLight below) -- a fixed world light means each
-# sign's own real geometry sits at whatever angle its rotation happens
-# to put it at relative to this light, and different signs ended up with
-# very different, inconsistent-looking shading purely from which way
-# they face. Excluding layer 2 here keeps this light out of that
-# entirely, while still lighting everything else in the world normally.
 light_cull_mask = 1048573
 
 [node name="Camera3D" type="Camera3D" parent="."]
@@ -93,19 +70,6 @@ current = true
 script = ExtResource("3")
 
 [node name="SignCameraLight" type="DirectionalLight3D" parent="Camera3D"]
-# No rotation relative to the camera -- its local -Z (forward) always
-# matches the camera's own view direction, so it lights whatever's
-# currently in view exactly the same way regardless of the camera's
-# orbit angle or a sign's own facing_degrees. Only layer 2 (Landmark
-# signs) responds to it; nothing else in the world is on that layer.
-#
-# shadow_enabled was left false originally -- but since the world
-# DirectionalLight3D's cull_mask now excludes signs entirely, this is
-# the ONLY light that can light them at all, and with shadows off here
-# there was no shadow depth left anywhere for a sign to get, which is
-# exactly the "no shadows" problem from before, just reintroduced a
-# different way. Turned on, with the same bias tuning already proven to
-# avoid self-shadow acne on this sign's flat faces.
 light_cull_mask = 2
 shadow_enabled = true
 shadow_bias = 0.05
