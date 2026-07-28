@@ -193,7 +193,13 @@ func _apply_toon_demo_material(node: Node) -> void:
 			# in shadowed faces now, the way real bounce light does
 			# outdoors, so this can go back down to something that still
 			# lets DIFFUSE_LIGHT show real directional falloff.
-			material.set_shader_parameter("min_shade", 0.28)
+			# Raised back up from 0.28 -- that value relied on the
+			# WorldEnvironment's ambient light to keep shadowed faces from
+			# looking too dark, and that WorldEnvironment has been removed
+			# (it's the likely cause of a separate, severe rendering
+			# artifact -- streaking/static across the ground -- that
+			# appeared as soon as it was added).
+			material.set_shader_parameter("min_shade", 0.4)
 			# Kept even though it didn't turn out to be the real fix -- it's
 			# still the mathematically correct way to compute a flat face's
 			# normal (this model has no curved surfaces to distort), so
