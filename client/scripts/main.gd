@@ -26,7 +26,7 @@ const FOCUS_TARGET_HEIGHT_METERS := 1.3 * LandmarkMarker.SIGN_SCALE
 # focused Landmark fades toward invisible instead (see
 # LandmarkMarker.fade_to()) rather than trying to steer the camera around
 # obstacles.
-const NEARBY_FADE_RADIUS_METERS := 12.0
+const NEARBY_FADE_RADIUS_METERS := 20.0
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ground: Node3D = $Ground

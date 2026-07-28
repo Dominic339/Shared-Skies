@@ -428,12 +428,23 @@ var _fade_tween: Tween = null
 # this marker from being tappable while faded, so a nearly-invisible sign
 # can't be accidentally interacted with.
 func fade_to(target_transparency: float, duration: float = 0.3) -> void:
-	input_ray_pickable = target_transparency < 0.5
+	var fading_out := target_transparency >= 0.5
+	input_ray_pickable = not fading_out
 	if _fade_tween and _fade_tween.is_valid():
 		_fade_tween.kill()
 	_fade_tween = create_tween()
 	_fade_tween.set_parallel(true)
 	for mesh_instance: MeshInstance3D in _collect_mesh_instances(self):
+		# transparency only changes how this renders -- it does nothing to
+		# stop the mesh from still casting a full, opaque-looking shadow
+		# onto whatever it's supposedly been faded out of the way of. A
+		# "nearly invisible" sign that's still casting its own shadow onto
+		# the Landmark actually being focused is just as much of a problem
+		# as it being visible in the first place.
+		mesh_instance.cast_shadow = (
+			GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if fading_out
+			else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		)
 		_fade_tween.tween_property(mesh_instance, "transparency", target_transparency, duration)
 
 
