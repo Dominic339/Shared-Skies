@@ -98,8 +98,18 @@ script = ExtResource("3")
 # currently in view exactly the same way regardless of the camera's
 # orbit angle or a sign's own facing_degrees. Only layer 2 (Landmark
 # signs) responds to it; nothing else in the world is on that layer.
+#
+# shadow_enabled was left false originally -- but since the world
+# DirectionalLight3D's cull_mask now excludes signs entirely, this is
+# the ONLY light that can light them at all, and with shadows off here
+# there was no shadow depth left anywhere for a sign to get, which is
+# exactly the "no shadows" problem from before, just reintroduced a
+# different way. Turned on, with the same bias tuning already proven to
+# avoid self-shadow acne on this sign's flat faces.
 light_cull_mask = 2
-shadow_enabled = false
+shadow_enabled = true
+shadow_bias = 0.05
+shadow_normal_bias = 2.0
 
 [node name="PlayerMarker" type="Node3D" parent="."]
 
