@@ -16,11 +16,25 @@ const TILE_DIR := "res://assets/map_tiles/nashua/"
 # road itself is drawn in the adjacent tile.
 const SEARCH_RADIUS_TILES := 1
 
+# Above this distance, the "nearest" road found isn't actually the road
+# this Landmark sits in front of -- it's just whatever happened to be
+# closest within the search radius, which can be 60-70m away in areas the
+# cooked tile export has little/no road data for (confirmed on Nashua
+# Public Library / Old Stone Well / The Nashua Riverwalk, all ~3 landmarks
+# clustered where the nearest road is 60+m off). Committing to a bearing
+# toward a road that far away produces a essentially arbitrary facing,
+# not a real "front" -- better to report null here so the caller's own
+# 0.0 last-resort default kicks in, an obviously-a-placeholder value
+# instead of one confident-looking but wrong.
+const MAX_ROAD_DISTANCE_METERS := 25.0
+
 
 # Returns a compass-style yaw in degrees (same atan2(x, z) convention
 # landmark_marker.gd's rotation.y and the old ambient face-camera code
 # both already used), or null if no road data is available near this
-# Landmark at all (e.g. outside the currently-exported map area).
+# Landmark at all (e.g. outside the currently-exported map area), or if
+# the nearest road found is too far away to plausibly be this Landmark's
+# actual front-facing road (see MAX_ROAD_DISTANCE_METERS above).
 static func compute_facing_degrees(lat: float, lng: float) -> Variant:
 	var local_pos := GeoProjection.to_local(lat, lng)
 	var origin := Vector2(local_pos.x, local_pos.z)
@@ -53,6 +67,8 @@ static func compute_facing_degrees(lat: float, lng: float) -> Variant:
 						found = true
 
 	if not found:
+		return null
+	if closest_dist_sq > MAX_ROAD_DISTANCE_METERS * MAX_ROAD_DISTANCE_METERS:
 		return null
 
 	var to_road := closest_point - origin
